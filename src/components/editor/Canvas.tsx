@@ -135,7 +135,7 @@ export const Canvas: React.FC<CanvasProps> = ({ pagesContainerRef }) => {
   };
 
   return (
-    <div className="flex-1 overflow-auto bg-background p-8 flex items-center justify-center">
+    <div className="flex-1 overflow-auto bg-background p-4 md:p-8 flex items-center justify-center pb-24 md:pb-8">
       {/* Page Container for PDF Export - includes all pages for export, but only current page visible */}
       <div
         ref={pagesContainerRef}

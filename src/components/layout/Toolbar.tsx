@@ -313,6 +313,10 @@ function getSlotCount(layout: LayoutType): number {
     case 'featured-side': return 3;
     case 'double-stack': return 4;
     case 'split-duo': return 3;
+    case 'portrait-large-left': return 3;
+    case 'landscape-large-top': return 3;
+    case 'portrait-large-right': return 3;
+    case 'landscape-large-bottom': return 3;
     default: return 1;
   }
 }

@@ -289,6 +289,24 @@ function getLayoutSlotCount(layout: string): number {
     case 'portfolio': return 3;
     case 'scrapbook': return 4;
     case 'mosaic': return 5;
+    case 'grid-2-4': return 6;
+    case 'grid-4-2': return 6;
+    case 'grid-1-2-3': return 6;
+    case 'center-focus': return 5;
+    case 'puzzle': return 4;
+    case 'panorama': return 1;
+    case 'quad-split': return 4;
+    case 'featured-duo': return 3;
+    case 'stack-mosaic': return 6;
+    case 'side-stack': return 4;
+    case 'hero-wide': return 1;
+    case 'featured-side': return 3;
+    case 'double-stack': return 4;
+    case 'split-duo': return 3;
+    case 'portrait-large-left': return 3;
+    case 'landscape-large-top': return 3;
+    case 'portrait-large-right': return 3;
+    case 'landscape-large-bottom': return 3;
     default: return 1;
   }
 }

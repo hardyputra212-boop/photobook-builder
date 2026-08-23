@@ -133,5 +133,58 @@ body {
 
 /* Toast notification */
 .toast {
-  @apply fixed bottom-4 right-4 bg-surface border border-border rounded-lg p-4 shadow-lg animate-fade-in;
+  @apply fixed bottom-20 md:bottom-4 right-4 left-4 md:left-auto bg-surface border border-border rounded-lg p-4 shadow-lg animate-fade-in z-50;
+}
+
+/* Mobile safe area for bottom nav */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+/* Mobile touch-friendly buttons */
+@media (max-width: 768px) {
+  /* Ensure minimum touch target size */
+  button,
+  [role="button"],
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Larger touch targets for primary actions */
+  .btn-primary,
+  .btn-primary-mobile {
+    min-height: 52px;
+    padding: 14px 20px;
+  }
+}
+
+/* Mobile panel styles */
+.mobile-panel {
+  @apply fixed inset-y-0 z-40 w-80 max-w-[85vw] bg-surface;
+}
+
+/* Hide scrollbar on mobile but keep functionality */
+@media (max-width: 768px) {
+  .hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* Mobile bottom action bar */
+.mobile-action-bar {
+  @apply fixed bottom-16 left-0 right-0 bg-surface border-t border-border p-3 z-30;
+}
+
+/* Responsive text sizes */
+@media (max-width: 768px) {
+  .text-responsive {
+    font-size: 14px;
+  }
 }
