@@ -1,0 +1,14 @@
+<svg width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <rect width="200" height="200" fill="#1a1a2e" rx="10"/>
+  <!-- 3x3 Grid -->
+  <rect x="8" y="8" width="55" height="55" fill="#2a2a4a" rx="3"/>
+  <rect x="72" y="8" width="55" height="55" fill="#2a2a4a" rx="3"/>
+  <rect x="137" y="8" width="55" height="55" fill="#2a2a4a" rx="3"/>
+  <rect x="8" y="72" width="55" height="55" fill="#2a2a4a" rx="3"/>
+  <rect x="72" y="72" width="55" height="55" fill="#2a2a4a" rx="3"/>
+  <rect x="137" y="72" width="55" height="55" fill="#2a2a4a" rx="3"/>
+  <rect x="8" y="137" width="55" height="55" fill="#2a2a4a" rx="3"/>
+  <rect x="72" y="137" width="55" height="55" fill="#2a2a4a" rx="3"/>
+  <rect x="137" y="137" width="55" height="55" fill="#2a2a4a" rx="3"/>
+  <text x="100" y="195" font-family="Arial" font-size="10" fill="#888" text-anchor="middle">Grid 3x3</text>
+</svg>

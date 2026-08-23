@@ -1,0 +1,14 @@
+<svg width="400" height="600" viewBox="0 0 400 600" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="p1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#ff9a9e"/>
+      <stop offset="100%" style="stop-color:#fecfef"/>
+    </linearGradient>
+  </defs>
+  <rect width="400" height="600" fill="url(#p1)"/>
+  <circle cx="200" cy="200" r="80" fill="rgba(255,255,255,0.4)"/>
+  <circle cx="200" cy="200" r="60" fill="rgba(255,255,255,0.6)"/>
+  <rect x="50" y="350" width="300" height="150" rx="10" fill="rgba(255,255,255,0.3)"/>
+  <text x="200" y="420" font-family="Arial" font-size="16" fill="white" text-anchor="middle" opacity="0.9">Sample Portrait Photo</text>
+  <text x="200" y="450" font-family="Arial" font-size="12" fill="white" text-anchor="middle" opacity="0.7">4x6 inch</text>
+</svg>

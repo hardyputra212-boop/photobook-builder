@@ -1,0 +1,10 @@
+<svg width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <rect width="200" height="200" fill="#1a1a2e" rx="10"/>
+  <!-- Mosaic layout -->
+  <rect x="10" y="10" width="115" height="115" fill="#2a2a4a" rx="5"/>
+  <rect x="135" y="10" width="55" height="55" fill="#2a2a4a" rx="5"/>
+  <rect x="135" y="75" width="55" height="115" fill="#2a2a4a" rx="5"/>
+  <rect x="10" y="135" width="55" height="55" fill="#2a2a4a" rx="5"/>
+  <rect x="75" y="135" width="50" height="55" fill="#2a2a4a" rx="5"/>
+  <text x="100" y="195" font-family="Arial" font-size="10" fill="#888" text-anchor="middle">Mosaic</text>
+</svg>
