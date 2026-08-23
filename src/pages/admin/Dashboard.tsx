@@ -1,100 +1,53 @@
 import React, { useEffect, useState } from 'react';
 import { Users, FileImage, TrendingUp } from 'lucide-react';
-import { collection, getDocs } from 'firebase/firestore';
-import { db } from '../../lib/firebase';
-
-interface DashboardStats {
-  totalUsers: number;
-  totalCustomers: number;
-  totalProjects: number;
-  recentUsers: Array<{
-    id: string;
-    email: string;
-    name: string;
-    role: string;
-    createdAt: any;
-  }>;
-  recentProjects: Array<{
-    id: string;
-    name: string;
-    userId: string;
-    userEmail?: string;
-    userName?: string;
-    status: string;
-    createdAt: any;
-  }>;
-}
+import { statsApi, usersApi, projectsApi } from '../../services/api';
 
 export const Dashboard: React.FC = () => {
-  const [stats, setStats] = useState<DashboardStats>({
+  const [stats, setStats] = useState({
     totalUsers: 0,
     totalCustomers: 0,
     totalProjects: 0,
-    recentUsers: [],
-    recentProjects: [],
+    completedProjects: 0,
   });
+  const [recentUsers, setRecentUsers] = useState<any[]>([]);
+  const [recentProjects, setRecentProjects] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        // Get total users
-        const usersSnapshot = await getDocs(collection(db, 'users'));
-        const totalUsers = usersSnapshot.size;
-        const usersData = usersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
-        // Get total customers
-        const totalCustomers = usersData.filter((u: any) => u.role === 'customer').length;
-
-        // Get total projects
-        const projectsSnapshot = await getDocs(collection(db, 'projects'));
-        const totalProjects = projectsSnapshot.size;
-
-        // Get recent users (last 5)
-        const recentUsers = usersData
-          .sort((a: any, b: any) => {
-            const dateA = a.createdAt?.toDate?.() || new Date(0);
-            const dateB = b.createdAt?.toDate?.() || new Date(0);
-            return dateB.getTime() - dateA.getTime();
-          })
-          .slice(0, 5) as DashboardStats['recentUsers'];
-
-        // Get recent projects (last 5)
-        const recentProjects = projectsSnapshot.docs
-          .map(doc => ({ id: doc.id, ...doc.data() }))
-          .sort((a: any, b: any) => {
-            const dateA = a.createdAt?.toDate?.() || new Date(0);
-            const dateB = b.createdAt?.toDate?.() || new Date(0);
-            return dateB.getTime() - dateA.getTime();
-          })
-          .slice(0, 5) as DashboardStats['recentProjects'];
-
-        setStats({
-          totalUsers,
-          totalCustomers,
-          totalProjects,
-          recentUsers,
-          recentProjects,
-        });
-      } catch (error) {
-        console.error('Error fetching stats:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchStats();
+    fetchData();
   }, []);
 
-  const formatDate = (timestamp: any) => {
-    if (!timestamp) return '-';
-    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+  const fetchData = async () => {
+    try {
+      const [statsData, usersData, projectsData] = await Promise.all([
+        statsApi.get(),
+        usersApi.getAll(),
+        projectsApi.getAll(),
+      ]);
+
+      setStats(statsData);
+      setRecentUsers(usersData.slice(0, 5));
+      setRecentProjects(projectsData.slice(0, 5));
+    } catch (error) {
+      console.error('Error fetching data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    if (!dateString) return '-';
+    const date = new Date(dateString);
     return date.toLocaleDateString('id-ID', {
       day: 'numeric',
       month: 'short',
       year: 'numeric',
     });
   };
+
+  const avgProjectsPerUser = stats.totalUsers > 0
+    ? (stats.totalProjects / stats.totalUsers).toFixed(1)
+    : '0';
 
   return (
     <div className="space-y-6">
@@ -155,7 +108,7 @@ export const Dashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* Growth */}
+        {/* Avg Projects */}
         <div className="bg-surface border border-border rounded-2xl p-5">
           <div className="flex items-center justify-between">
             <div className="p-3 rounded-xl bg-orange-500/20">
@@ -164,7 +117,7 @@ export const Dashboard: React.FC = () => {
           </div>
           <div className="mt-4">
             <p className="text-3xl font-bold text-white">
-              {stats.totalUsers > 0 ? (stats.totalProjects / stats.totalUsers).toFixed(1) : '0'}
+              {loading ? '...' : avgProjectsPerUser}
             </p>
             <p className="text-text-secondary text-sm">Avg Projects/User</p>
           </div>
@@ -194,14 +147,14 @@ export const Dashboard: React.FC = () => {
                       Loading...
                     </td>
                   </tr>
-                ) : stats.recentUsers.length === 0 ? (
+                ) : recentUsers.length === 0 ? (
                   <tr>
                     <td colSpan={3} className="px-5 py-8 text-center text-text-secondary">
                       No users yet
                     </td>
                   </tr>
                 ) : (
-                  stats.recentUsers.map((user) => (
+                  recentUsers.map((user) => (
                     <tr key={user.id} className="border-t border-border hover:bg-primary/30">
                       <td className="px-5 py-3 text-sm text-white">{user.email || '-'}</td>
                       <td className="px-5 py-3 text-sm">
@@ -216,7 +169,7 @@ export const Dashboard: React.FC = () => {
                         </span>
                       </td>
                       <td className="px-5 py-3 text-sm text-text-secondary">
-                        {formatDate(user.createdAt)}
+                        {formatDate(user.created_at)}
                       </td>
                     </tr>
                   ))
@@ -247,14 +200,14 @@ export const Dashboard: React.FC = () => {
                       Loading...
                     </td>
                   </tr>
-                ) : stats.recentProjects.length === 0 ? (
+                ) : recentProjects.length === 0 ? (
                   <tr>
                     <td colSpan={3} className="px-5 py-8 text-center text-text-secondary">
                       No projects yet
                     </td>
                   </tr>
                 ) : (
-                  stats.recentProjects.map((project) => (
+                  recentProjects.map((project) => (
                     <tr key={project.id} className="border-t border-border hover:bg-primary/30">
                       <td className="px-5 py-3 text-sm text-white">{project.name || 'Untitled'}</td>
                       <td className="px-5 py-3 text-sm">
@@ -269,7 +222,7 @@ export const Dashboard: React.FC = () => {
                         </span>
                       </td>
                       <td className="px-5 py-3 text-sm text-text-secondary">
-                        {formatDate(project.createdAt)}
+                        {formatDate(project.created_at)}
                       </td>
                     </tr>
                   ))

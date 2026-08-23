@@ -10,25 +10,15 @@ import {
   Shield,
   Mail,
 } from 'lucide-react';
-import {
-  collection,
-  getDocs,
-  updateDoc,
-  deleteDoc,
-  doc,
-  query,
-  orderBy,
-} from 'firebase/firestore';
-import { db } from '../../lib/firebase';
+import { usersApi } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 
 interface UserData {
-  id: string;
+  id: number;
   email: string;
   name: string;
   role: 'admin' | 'customer';
-  createdAt: any;
-  lastLogin?: any;
+  created_at: string;
 }
 
 export const Users: React.FC = () => {
@@ -38,7 +28,8 @@ export const Users: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editingUser, setEditingUser] = useState<UserData | null>(null);
-  const [showMenuId, setShowMenuId] = useState<string | null>(null);
+  const [showMenuId, setShowMenuId] = useState<number | null>(null);
+  const [error, setError] = useState('');
 
   // Form state
   const [formData, setFormData] = useState({
@@ -54,15 +45,12 @@ export const Users: React.FC = () => {
 
   const fetchUsers = async () => {
     try {
-      const q = query(collection(db, 'users'), orderBy('createdAt', 'desc'));
-      const snapshot = await getDocs(q);
-      const usersData = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      })) as UserData[];
-      setUsers(usersData);
-    } catch (error) {
-      console.error('Error fetching users:', error);
+      const data = await usersApi.getAll();
+      setUsers(data);
+      setError('');
+    } catch (err: any) {
+      console.error('Error fetching users:', err);
+      setError(err.message || 'Failed to load users');
     } finally {
       setLoading(false);
     }
@@ -70,29 +58,46 @@ export const Users: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
 
     try {
       if (editingUser) {
-        // Update existing user
-        await updateDoc(doc(db, 'users', editingUser.id), {
+        await usersApi.update(editingUser.id, {
           name: formData.name,
           role: formData.role,
         });
+      } else {
+        // Create new user
+        const result = await fetch('/api/auth/register', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${localStorage.getItem('photobook_token')}`,
+          },
+          body: JSON.stringify({
+            email: formData.email,
+            password: formData.password,
+            name: formData.name,
+            role: formData.role,
+          }),
+        });
+        if (!result.ok) {
+          const data = await result.json();
+          throw new Error(data.error || 'Failed to create user');
+        }
       }
-      // Note: Email/password update requires Firebase Auth API
-      // For simplicity, we'll handle that separately
-
       setShowModal(false);
       setEditingUser(null);
       resetForm();
       fetchUsers();
-    } catch (error) {
-      console.error('Error saving user:', error);
+    } catch (err: any) {
+      console.error('Error saving user:', err);
+      setError(err.message);
     }
   };
 
-  const handleDelete = async (userId: string) => {
-    if (userId === currentUser?.uid) {
+  const handleDelete = async (userId: number) => {
+    if (userId === currentUser?.id) {
       alert('Tidak dapat menghapus akun sendiri');
       return;
     }
@@ -100,10 +105,11 @@ export const Users: React.FC = () => {
     if (!confirm('Yakin ingin menghapus user ini?')) return;
 
     try {
-      await deleteDoc(doc(db, 'users', userId));
+      await usersApi.delete(userId);
       fetchUsers();
-    } catch (error) {
-      console.error('Error deleting user:', error);
+    } catch (err: any) {
+      console.error('Error deleting user:', err);
+      alert(err.message || 'Failed to delete user');
     }
   };
 
@@ -117,6 +123,7 @@ export const Users: React.FC = () => {
     });
     setShowModal(true);
     setShowMenuId(null);
+    setError('');
   };
 
   const resetForm = () => {
@@ -132,11 +139,12 @@ export const Users: React.FC = () => {
     resetForm();
     setEditingUser(null);
     setShowModal(true);
+    setError('');
   };
 
-  const formatDate = (timestamp: any) => {
-    if (!timestamp) return '-';
-    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+  const formatDate = (dateString: string) => {
+    if (!dateString) return '-';
+    const date = new Date(dateString);
     return date.toLocaleDateString('id-ID', {
       day: 'numeric',
       month: 'short',
@@ -146,8 +154,8 @@ export const Users: React.FC = () => {
 
   const filteredUsers = users.filter(
     (user) =>
-      user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.name.toLowerCase().includes(searchQuery.toLowerCase())
+      user.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      user.name?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
@@ -166,6 +174,13 @@ export const Users: React.FC = () => {
           Add User
         </button>
       </div>
+
+      {/* Error message */}
+      {error && (
+        <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+          {error}
+        </div>
+      )}
 
       {/* Search */}
       <div className="relative">
@@ -188,20 +203,19 @@ export const Users: React.FC = () => {
                 <th className="text-left px-5 py-4 text-sm text-text-secondary font-medium">User</th>
                 <th className="text-left px-5 py-4 text-sm text-text-secondary font-medium">Role</th>
                 <th className="text-left px-5 py-4 text-sm text-text-secondary font-medium">Joined</th>
-                <th className="text-left px-5 py-4 text-sm text-text-secondary font-medium">Last Login</th>
                 <th className="text-right px-5 py-4 text-sm text-text-secondary font-medium">Actions</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={5} className="px-5 py-12 text-center text-text-secondary">
+                  <td colSpan={4} className="px-5 py-12 text-center text-text-secondary">
                     Loading...
                   </td>
                 </tr>
               ) : filteredUsers.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-5 py-12 text-center text-text-secondary">
+                  <td colSpan={4} className="px-5 py-12 text-center text-text-secondary">
                     No users found
                   </td>
                 </tr>
@@ -241,10 +255,7 @@ export const Users: React.FC = () => {
                       </span>
                     </td>
                     <td className="px-5 py-4 text-sm text-text-secondary">
-                      {formatDate(user.createdAt)}
-                    </td>
-                    <td className="px-5 py-4 text-sm text-text-secondary">
-                      {formatDate(user.lastLogin)}
+                      {formatDate(user.created_at)}
                     </td>
                     <td className="px-5 py-4">
                       <div className="relative">
@@ -328,17 +339,15 @@ export const Users: React.FC = () => {
               {!editingUser && (
                 <div>
                   <label className="block text-sm text-text-secondary mb-2">Password</label>
-                  <div className="relative">
-                    <input
-                      type="password"
-                      value={formData.password}
-                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                      placeholder="••••••••"
-                      required
-                      minLength={6}
-                      className="w-full px-4 py-3 bg-primary border border-border rounded-xl text-white placeholder:text-text-secondary focus:outline-none focus:border-accent transition-colors"
-                    />
-                  </div>
+                  <input
+                    type="password"
+                    value={formData.password}
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    placeholder="••••••••"
+                    required
+                    minLength={6}
+                    className="w-full px-4 py-3 bg-primary border border-border rounded-xl text-white placeholder:text-text-secondary focus:outline-none focus:border-accent transition-colors"
+                  />
                 </div>
               )}
 
@@ -386,6 +395,12 @@ export const Users: React.FC = () => {
                   </button>
                 </div>
               </div>
+
+              {error && (
+                <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+                  {error}
+                </div>
+              )}
 
               <div className="flex gap-3 pt-4">
                 <button

@@ -1,80 +1,70 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import {
-  onAuthStateChanged,
-  signInWithEmailAndPassword,
-  signOut,
-  createUserWithEmailAndPassword,
-} from 'firebase/auth';
-import type { User } from 'firebase/auth';
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { auth, db } from '../lib/firebase';
+import { authApi } from '../services/api';
 
 interface AuthContextType {
-  user: User | null;
+  user: any | null;
   userRole: 'admin' | 'customer' | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, name: string, role: 'admin' | 'customer') => Promise<void>;
-  logout: () => Promise<void>;
+  logout: () => void;
+  isAuthenticated: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<any | null>(null);
   const [userRole, setUserRole] = useState<'admin' | 'customer' | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      setUser(firebaseUser);
-
-      if (firebaseUser) {
-        // Get user role from Firestore
+    // Check if user is already logged in
+    const checkAuth = async () => {
+      if (authApi.isAuthenticated()) {
         try {
-          const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
-          if (userDoc.exists()) {
-            setUserRole(userDoc.data().role);
-          } else {
-            setUserRole(null);
-          }
+          const currentUser = await authApi.getCurrentUser();
+          setUser(currentUser);
+          setUserRole(currentUser.role);
         } catch (error) {
-          console.error('Error fetching user role:', error);
-          setUserRole(null);
+          // Token expired or invalid
+          authApi.logout();
         }
-      } else {
-        setUserRole(null);
       }
-
       setLoading(false);
-    });
+    };
 
-    return () => unsubscribe();
+    checkAuth();
   }, []);
 
   const login = async (email: string, password: string) => {
-    await signInWithEmailAndPassword(auth, email, password);
+    const result = await authApi.login(email, password);
+    setUser(result.user);
+    setUserRole(result.user.role);
   };
 
   const register = async (email: string, password: string, name: string, role: 'admin' | 'customer') => {
-    const { user: newUser } = await createUserWithEmailAndPassword(auth, email, password);
-
-    // Create user document in Firestore
-    await setDoc(doc(db, 'users', newUser.uid), {
-      email,
-      name,
-      role,
-      createdAt: serverTimestamp(),
-      lastLogin: serverTimestamp(),
-    });
+    await authApi.register(email, password, name, role);
   };
 
-  const logout = async () => {
-    await signOut(auth);
+  const logout = () => {
+    authApi.logout();
+    setUser(null);
+    setUserRole(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, userRole, loading, login, register, logout }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        userRole,
+        loading,
+        login,
+        register,
+        logout,
+        isAuthenticated: !!user,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

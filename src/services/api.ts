@@ -1,0 +1,198 @@
+// =============================================
+// PhotoBook Builder - API Service
+// =============================================
+
+const API_BASE_URL = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_URL) || 'http://localhost:3000';
+
+// =============================================
+// Token Management
+// =============================================
+const getToken = () => localStorage.getItem('photobook_token');
+const setToken = (token: string) => localStorage.setItem('photobook_token', token);
+const removeToken = () => localStorage.removeItem('photobook_token');
+
+const getUser = () => {
+    const userStr = localStorage.getItem('photobook_user');
+    return userStr ? JSON.parse(userStr) : null;
+};
+const setUser = (user: any) => localStorage.setItem('photobook_user', JSON.stringify(user));
+const removeUser = () => localStorage.removeItem('photobook_user');
+
+// =============================================
+// API Helper
+// =============================================
+async function apiRequest(endpoint: string, options: RequestInit = {}): Promise<any> {
+    const token = getToken();
+
+    const config: RequestInit = {
+        ...options,
+        headers: {
+            'Content-Type': 'application/json',
+            ...(token && { Authorization: `Bearer ${token}` }),
+            ...options.headers,
+        },
+    };
+
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
+
+    // Handle unauthorized
+    if (response.status === 401 || response.status === 403) {
+        removeToken();
+        removeUser();
+        window.location.href = '/login';
+        throw new Error('Unauthorized');
+    }
+
+    const data = await response.json();
+
+    if (!response.ok) {
+        throw new Error(data.error || 'Request failed');
+    }
+
+    return data;
+}
+
+// =============================================
+// AUTH API
+// =============================================
+export const authApi = {
+    async login(email: string, password: string) {
+        const data = await apiRequest('/api/auth/login', {
+            method: 'POST',
+            body: JSON.stringify({ email, password }),
+        });
+
+        setToken(data.token);
+        setUser(data.user);
+        return data;
+    },
+
+    async register(email: string, password: string, name: string, role: 'admin' | 'customer') {
+        return apiRequest('/api/auth/register', {
+            method: 'POST',
+            body: JSON.stringify({ email, password, name, role }),
+        });
+    },
+
+    async getCurrentUser() {
+        return apiRequest('/api/auth/me');
+    },
+
+    logout() {
+        removeToken();
+        removeUser();
+    },
+
+    isAuthenticated() {
+        return !!getToken();
+    },
+
+    getCurrentUserSync() {
+        return getUser();
+    },
+};
+
+// =============================================
+// USERS API (Admin Only)
+// =============================================
+export const usersApi = {
+    async getAll() {
+        return apiRequest('/api/users');
+    },
+
+    async update(id: number, data: { name?: string; role?: string }) {
+        return apiRequest(`/api/users/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(data),
+        });
+    },
+
+    async delete(id: number) {
+        return apiRequest(`/api/users/${id}`, {
+            method: 'DELETE',
+        });
+    },
+};
+
+// =============================================
+// HOME CONTENT API
+// =============================================
+export const homeApi = {
+    async get() {
+        return apiRequest('/api/home-content');
+    },
+
+    async update(data: any) {
+        return apiRequest('/api/home-content', {
+            method: 'PUT',
+            body: JSON.stringify(data),
+        });
+    },
+
+    async uploadImage(file: File) {
+        const token = getToken();
+        const formData = new FormData();
+        formData.append('image', file);
+
+        const response = await fetch(`${API_BASE_URL}/api/upload`, {
+            method: 'POST',
+            headers: {
+                ...(token && { Authorization: `Bearer ${token}` }),
+            },
+            body: formData,
+        });
+
+        const data = await response.json();
+        if (!response.ok) {
+            throw new Error(data.error || 'Upload failed');
+        }
+        return data;
+    },
+};
+
+// =============================================
+// PROJECTS API
+// =============================================
+export const projectsApi = {
+    async getAll() {
+        return apiRequest('/api/projects');
+    },
+
+    async getOne(id: number) {
+        return apiRequest(`/api/projects/${id}`);
+    },
+
+    async create(data: any) {
+        return apiRequest('/api/projects', {
+            method: 'POST',
+            body: JSON.stringify(data),
+        });
+    },
+
+    async update(id: number, data: any) {
+        return apiRequest(`/api/projects/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(data),
+        });
+    },
+
+    async delete(id: number) {
+        return apiRequest(`/api/projects/${id}`, {
+            method: 'DELETE',
+        });
+    },
+};
+
+// =============================================
+// STATS API
+// =============================================
+export const statsApi = {
+    async get() {
+        return apiRequest('/api/stats');
+    },
+};
+
+// =============================================
+// EXPORT API BASE URL
+// =============================================
+export { API_BASE_URL };
