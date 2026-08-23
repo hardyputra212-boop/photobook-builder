@@ -2,7 +2,7 @@
 // PhotoBook Builder - API Service
 // =============================================
 
-const API_BASE_URL = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_URL) || 'http://localhost:3000';
+const API_BASE_URL = 'http://localhost:3000';
 
 // =============================================
 // Token Management
@@ -28,7 +28,7 @@ async function apiRequest(endpoint: string, options: RequestInit = {}): Promise<
         ...options,
         headers: {
             'Content-Type': 'application/json',
-            ...(token && { Authorization: `Bearer ${token}` }),
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
             ...options.headers,
         },
     };
@@ -43,7 +43,19 @@ async function apiRequest(endpoint: string, options: RequestInit = {}): Promise<
         throw new Error('Unauthorized');
     }
 
-    const data = await response.json();
+    const text = await response.text();
+
+    if (!text) {
+        throw new Error('Empty response from server');
+    }
+
+    let data;
+    try {
+        data = JSON.parse(text);
+    } catch (e) {
+        console.error('Invalid JSON response:', text);
+        throw new Error('Invalid JSON response from server');
+    }
 
     if (!response.ok) {
         throw new Error(data.error || 'Request failed');
@@ -100,7 +112,7 @@ export const usersApi = {
         return apiRequest('/api/users');
     },
 
-    async update(id: number, data: { name?: string; role?: string }) {
+    async update(id: number, data: { name?: string; role?: string; is_active?: boolean; expires_at?: string | null }) {
         return apiRequest(`/api/users/${id}`, {
             method: 'PUT',
             body: JSON.stringify(data),
@@ -137,16 +149,23 @@ export const homeApi = {
         const response = await fetch(`${API_BASE_URL}/api/upload`, {
             method: 'POST',
             headers: {
-                ...(token && { Authorization: `Bearer ${token}` }),
+                ...(token ? { Authorization: `Bearer ${token}` } : {}),
             },
             body: formData,
         });
 
-        const data = await response.json();
-        if (!response.ok) {
-            throw new Error(data.error || 'Upload failed');
+        const text = await response.text();
+        let result;
+        try {
+            result = JSON.parse(text);
+        } catch (e) {
+            throw new Error('Invalid response from server');
         }
-        return data;
+
+        if (!response.ok) {
+            throw new Error(result.error || 'Upload failed');
+        }
+        return result;
     },
 };
 

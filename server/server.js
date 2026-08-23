@@ -78,7 +78,6 @@ app.use('/uploads', express.static(UPLOAD_DIR));
 // Helper Functions
 // =============================================
 
-// Execute query with error handling
 async function query(sql, params) {
     try {
         const [results] = await pool.execute(sql, params);
@@ -115,6 +114,17 @@ function adminOnly(req, res, next) {
     next();
 }
 
+// Check if user is active and not expired
+async function checkUserStatus(user) {
+    if (!user.is_active) {
+        return { active: false, reason: 'Account is inactive' };
+    }
+    if (user.expires_at && new Date(user.expires_at) < new Date()) {
+        return { active: false, reason: 'Account has expired' };
+    }
+    return { active: true };
+}
+
 // =============================================
 // AUTH ROUTES
 // =============================================
@@ -141,6 +151,15 @@ app.post('/api/auth/login', async (req, res) => {
             return res.status(401).json({ error: 'Invalid credentials' });
         }
 
+        // Check if user is active
+        const status = await checkUserStatus(user);
+        if (!status.active) {
+            return res.status(403).json({ error: status.reason });
+        }
+
+        // Update last_active
+        await query('UPDATE users SET last_active = NOW() WHERE id = ?', [user.id]);
+
         const token = jwt.sign(
             { id: user.id, email: user.email, role: user.role },
             JWT_SECRET,
@@ -153,7 +172,9 @@ app.post('/api/auth/login', async (req, res) => {
                 id: user.id,
                 email: user.email,
                 name: user.name,
-                role: user.role
+                role: user.role,
+                is_active: user.is_active,
+                expires_at: user.expires_at
             }
         });
     } catch (error) {
@@ -165,7 +186,7 @@ app.post('/api/auth/login', async (req, res) => {
 // Register (admin only can create users)
 app.post('/api/auth/register', authenticateToken, adminOnly, async (req, res) => {
     try {
-        const { email, password, name, role } = req.body;
+        const { email, password, name, role, expires_at, is_active } = req.body;
 
         if (!email || !password) {
             return res.status(400).json({ error: 'Email and password required' });
@@ -182,8 +203,8 @@ app.post('/api/auth/register', authenticateToken, adminOnly, async (req, res) =>
 
         // Insert user
         const result = await query(
-            'INSERT INTO users (email, password, name, role) VALUES (?, ?, ?, ?)',
-            [email, hashedPassword, name || '', role || 'customer']
+            'INSERT INTO users (email, password, name, role, expires_at, is_active) VALUES (?, ?, ?, ?, ?, ?)',
+            [email, hashedPassword, name || '', role || 'customer', expires_at || null, is_active !== undefined ? is_active : true]
         );
 
         res.status(201).json({
@@ -199,7 +220,7 @@ app.post('/api/auth/register', authenticateToken, adminOnly, async (req, res) =>
 // Get current user
 app.get('/api/auth/me', authenticateToken, async (req, res) => {
     try {
-        const users = await query('SELECT id, email, name, role, created_at FROM users WHERE id = ?', [req.user.id]);
+        const users = await query('SELECT id, email, name, role, is_active, expires_at, last_active, created_at FROM users WHERE id = ?', [req.user.id]);
 
         if (users.length === 0) {
             return res.status(404).json({ error: 'User not found' });
@@ -220,7 +241,7 @@ app.get('/api/auth/me', authenticateToken, async (req, res) => {
 app.get('/api/users', authenticateToken, adminOnly, async (req, res) => {
     try {
         const users = await query(
-            'SELECT id, email, name, role, created_at FROM users ORDER BY created_at DESC'
+            'SELECT id, email, name, role, is_active, expires_at, last_active, created_at FROM users ORDER BY created_at DESC'
         );
         res.json(users);
     } catch (error) {
@@ -233,12 +254,35 @@ app.get('/api/users', authenticateToken, adminOnly, async (req, res) => {
 app.put('/api/users/:id', authenticateToken, adminOnly, async (req, res) => {
     try {
         const { id } = req.params;
-        const { name, role } = req.body;
+        const { name, role, expires_at, is_active } = req.body;
 
-        await query(
-            'UPDATE users SET name = ?, role = ? WHERE id = ?',
-            [name, role, id]
-        );
+        // Build update query dynamically
+        const updates = [];
+        const params = [];
+
+        if (name !== undefined) {
+            updates.push('name = ?');
+            params.push(name);
+        }
+        if (role !== undefined) {
+            updates.push('role = ?');
+            params.push(role);
+        }
+        if (expires_at !== undefined) {
+            updates.push('expires_at = ?');
+            params.push(expires_at || null);
+        }
+        if (is_active !== undefined) {
+            updates.push('is_active = ?');
+            params.push(is_active);
+        }
+
+        if (updates.length === 0) {
+            return res.status(400).json({ error: 'No fields to update' });
+        }
+
+        params.push(id);
+        await query(`UPDATE users SET ${updates.join(', ')} WHERE id = ?`, params);
 
         res.json({ message: 'User updated successfully' });
     } catch (error) {
@@ -385,10 +429,7 @@ app.get('/api/projects', authenticateToken, async (req, res) => {
 app.get('/api/projects/:id', authenticateToken, async (req, res) => {
     try {
         const { id } = req.params;
-        const projects = await query(
-            'SELECT * FROM projects WHERE id = ?',
-            [id]
-        );
+        const projects = await query('SELECT * FROM projects WHERE id = ?', [id]);
 
         if (projects.length === 0) {
             return res.status(404).json({ error: 'Project not found' });
@@ -396,7 +437,6 @@ app.get('/api/projects/:id', authenticateToken, async (req, res) => {
 
         const project = projects[0];
 
-        // Check ownership
         if (req.user.role !== 'admin' && project.user_id !== req.user.id) {
             return res.status(403).json({ error: 'Access denied' });
         }
@@ -437,7 +477,6 @@ app.put('/api/projects/:id', authenticateToken, async (req, res) => {
         const { id } = req.params;
         const { name, data, status } = req.body;
 
-        // Check ownership
         const projects = await query('SELECT user_id FROM projects WHERE id = ?', [id]);
         if (projects.length === 0) {
             return res.status(404).json({ error: 'Project not found' });
@@ -464,7 +503,6 @@ app.delete('/api/projects/:id', authenticateToken, async (req, res) => {
     try {
         const { id } = req.params;
 
-        // Check ownership
         const projects = await query('SELECT user_id FROM projects WHERE id = ?', [id]);
         if (projects.length === 0) {
             return res.status(404).json({ error: 'Project not found' });
@@ -490,12 +528,14 @@ app.get('/api/stats', authenticateToken, adminOnly, async (req, res) => {
     try {
         const [totalUsers] = await query('SELECT COUNT(*) as count FROM users');
         const [totalCustomers] = await query('SELECT COUNT(*) as count FROM users WHERE role = "customer"');
+        const [activeUsers] = await query('SELECT COUNT(*) as count FROM users WHERE is_active = 1 AND (expires_at IS NULL OR expires_at > NOW())');
         const [totalProjects] = await query('SELECT COUNT(*) as count FROM projects');
         const [completedProjects] = await query('SELECT COUNT(*) as count FROM projects WHERE status = "completed"');
 
         res.json({
             totalUsers: totalUsers.count,
             totalCustomers: totalCustomers.count,
+            activeUsers: activeUsers.count,
             totalProjects: totalProjects.count,
             completedProjects: completedProjects.count
         });

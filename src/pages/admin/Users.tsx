@@ -9,6 +9,9 @@ import {
   User,
   Shield,
   Mail,
+  Calendar,
+  ToggleLeft,
+  ToggleRight,
 } from 'lucide-react';
 import { usersApi } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
@@ -18,6 +21,9 @@ interface UserData {
   email: string;
   name: string;
   role: 'admin' | 'customer';
+  is_active: boolean;
+  expires_at: string | null;
+  last_active: string | null;
   created_at: string;
 }
 
@@ -31,12 +37,13 @@ export const Users: React.FC = () => {
   const [showMenuId, setShowMenuId] = useState<number | null>(null);
   const [error, setError] = useState('');
 
-  // Form state
   const [formData, setFormData] = useState({
     email: '',
     password: '',
     name: '',
     role: 'customer' as 'admin' | 'customer',
+    is_active: true,
+    expires_at: '' as string | '',
   });
 
   useEffect(() => {
@@ -65,10 +72,11 @@ export const Users: React.FC = () => {
         await usersApi.update(editingUser.id, {
           name: formData.name,
           role: formData.role,
+          is_active: formData.is_active,
+          expires_at: formData.expires_at || null,
         });
       } else {
-        // Create new user
-        const result = await fetch('/api/auth/register', {
+        const result = await fetch('http://localhost:3000/api/auth/register', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -79,6 +87,8 @@ export const Users: React.FC = () => {
             password: formData.password,
             name: formData.name,
             role: formData.role,
+            is_active: formData.is_active,
+            expires_at: formData.expires_at || null,
           }),
         });
         if (!result.ok) {
@@ -120,6 +130,8 @@ export const Users: React.FC = () => {
       password: '',
       name: user.name,
       role: user.role,
+      is_active: user.is_active ?? true,
+      expires_at: user.expires_at ? user.expires_at.split('T')[0] : '',
     });
     setShowModal(true);
     setShowMenuId(null);
@@ -132,6 +144,8 @@ export const Users: React.FC = () => {
       password: '',
       name: '',
       role: 'customer',
+      is_active: true,
+      expires_at: '',
     });
   };
 
@@ -142,7 +156,7 @@ export const Users: React.FC = () => {
     setError('');
   };
 
-  const formatDate = (dateString: string) => {
+  const formatDate = (dateString: string | null) => {
     if (!dateString) return '-';
     const date = new Date(dateString);
     return date.toLocaleDateString('id-ID', {
@@ -150,6 +164,11 @@ export const Users: React.FC = () => {
       month: 'short',
       year: 'numeric',
     });
+  };
+
+  const isExpired = (expires_at: string | null) => {
+    if (!expires_at) return false;
+    return new Date(expires_at) < new Date();
   };
 
   const filteredUsers = users.filter(
@@ -201,7 +220,8 @@ export const Users: React.FC = () => {
             <thead className="bg-primary/50">
               <tr>
                 <th className="text-left px-5 py-4 text-sm text-text-secondary font-medium">User</th>
-                <th className="text-left px-5 py-4 text-sm text-text-secondary font-medium">Role</th>
+                <th className="text-left px-5 py-4 text-sm text-text-secondary font-medium">Status</th>
+                <th className="text-left px-5 py-4 text-sm text-text-secondary font-medium">Expires</th>
                 <th className="text-left px-5 py-4 text-sm text-text-secondary font-medium">Joined</th>
                 <th className="text-right px-5 py-4 text-sm text-text-secondary font-medium">Actions</th>
               </tr>
@@ -209,13 +229,13 @@ export const Users: React.FC = () => {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={4} className="px-5 py-12 text-center text-text-secondary">
+                  <td colSpan={5} className="px-5 py-12 text-center text-text-secondary">
                     Loading...
                   </td>
                 </tr>
               ) : filteredUsers.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-5 py-12 text-center text-text-secondary">
+                  <td colSpan={5} className="px-5 py-12 text-center text-text-secondary">
                     No users found
                   </td>
                 </tr>
@@ -234,25 +254,40 @@ export const Users: React.FC = () => {
                       </div>
                     </td>
                     <td className="px-5 py-4">
-                      <span
-                        className={`px-3 py-1 rounded-full text-xs font-medium ${
-                          user.role === 'admin'
-                            ? 'bg-accent/20 text-accent'
-                            : 'bg-blue-500/20 text-blue-400'
-                        }`}
-                      >
-                        {user.role === 'admin' ? (
-                          <span className="flex items-center gap-1">
-                            <Shield size={12} />
-                            Admin
+                      <span className="flex items-center gap-2">
+                        {user.is_active && !isExpired(user.expires_at) ? (
+                          <span className="px-3 py-1 rounded-full text-xs font-medium bg-green-500/20 text-green-400 flex items-center gap-1">
+                            <ToggleRight size={14} />
+                            Active
                           </span>
                         ) : (
-                          <span className="flex items-center gap-1">
-                            <User size={12} />
-                            Customer
+                          <span className="px-3 py-1 rounded-full text-xs font-medium bg-red-500/20 text-red-400 flex items-center gap-1">
+                            <ToggleLeft size={14} />
+                            {isExpired(user.expires_at) ? 'Expired' : 'Inactive'}
                           </span>
                         )}
+                        <span className={`px-2 py-0.5 rounded-full text-xs ${
+                          user.role === 'admin' ? 'bg-accent/20 text-accent' : 'bg-blue-500/20 text-blue-400'
+                        }`}>
+                          {user.role === 'admin' ? (
+                            <span className="flex items-center gap-1">
+                              <Shield size={10} />
+                              Admin
+                            </span>
+                          ) : (
+                            'Customer'
+                          )}
+                        </span>
                       </span>
+                    </td>
+                    <td className="px-5 py-4">
+                      {user.expires_at ? (
+                        <span className={`text-sm ${isExpired(user.expires_at) ? 'text-red-400' : 'text-text-secondary'}`}>
+                          {formatDate(user.expires_at)}
+                        </span>
+                      ) : (
+                        <span className="text-sm text-green-400">Never expires</span>
+                      )}
                     </td>
                     <td className="px-5 py-4 text-sm text-text-secondary">
                       {formatDate(user.created_at)}
@@ -267,10 +302,7 @@ export const Users: React.FC = () => {
                         </button>
                         {showMenuId === user.id && (
                           <>
-                            <div
-                              className="fixed inset-0 z-10"
-                              onClick={() => setShowMenuId(null)}
-                            />
+                            <div className="fixed inset-0 z-10" onClick={() => setShowMenuId(null)} />
                             <div className="absolute right-0 top-full mt-1 w-40 bg-surface border border-border rounded-xl shadow-lg z-20 overflow-hidden">
                               <button
                                 onClick={() => openEditModal(user)}
@@ -302,19 +334,13 @@ export const Users: React.FC = () => {
       {/* Modal */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-            onClick={() => setShowModal(false)}
-          />
-          <div className="relative bg-surface border border-border rounded-2xl p-6 w-full max-w-md animate-fade-in">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowModal(false)} />
+          <div className="relative bg-surface border border-border rounded-2xl p-6 w-full max-w-md animate-fade-in max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-semibold text-white">
                 {editingUser ? 'Edit User' : 'Add New User'}
               </h2>
-              <button
-                onClick={() => setShowModal(false)}
-                className="p-2 rounded-lg hover:bg-primary transition-colors"
-              >
+              <button onClick={() => setShowModal(false)} className="p-2 rounded-lg hover:bg-primary transition-colors">
                 <X size={20} className="text-text-secondary" />
               </button>
             </div>
@@ -364,6 +390,55 @@ export const Users: React.FC = () => {
                     className="w-full pl-10 pr-4 py-3 bg-primary border border-border rounded-xl text-white placeholder:text-text-secondary focus:outline-none focus:border-accent transition-colors"
                   />
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-sm text-text-secondary mb-2">Status Akun</label>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, is_active: true })}
+                    className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border transition-colors ${
+                      formData.is_active
+                        ? 'bg-green-500/20 border-green-500 text-green-400'
+                        : 'bg-primary border-border text-text-secondary hover:text-white'
+                    }`}
+                  >
+                    <ToggleRight size={18} />
+                    Active
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, is_active: false })}
+                    className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border transition-colors ${
+                      !formData.is_active
+                        ? 'bg-red-500/20 border-red-500 text-red-400'
+                        : 'bg-primary border-border text-text-secondary hover:text-white'
+                    }`}
+                  >
+                    <ToggleLeft size={18} />
+                    Inactive
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm text-text-secondary mb-2">
+                  <span className="flex items-center gap-2">
+                    <Calendar size={14} />
+                    Masa Aktif (Tanggal Kadaluarsa)
+                  </span>
+                </label>
+                <input
+                  type="date"
+                  value={formData.expires_at}
+                  onChange={(e) => setFormData({ ...formData, expires_at: e.target.value })}
+                  min={new Date().toISOString().split('T')[0]}
+                  className="w-full px-4 py-3 bg-primary border border-border rounded-xl text-white focus:outline-none focus:border-accent transition-colors"
+                />
+                <p className="text-xs text-text-secondary mt-1">
+                  Kosongkan jika tidak ada batasan masa aktif
+                </p>
               </div>
 
               <div>
