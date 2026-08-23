@@ -258,6 +258,55 @@ export const LAYOUT_TEMPLATES: LayoutTemplate[] = [
       { x: 45, y: 5, width: 50, height: 90 },
     ],
   },
+  // === NEW USER LAYOUTS 3 - From Images ===
+  {
+    type: 'portrait-large-left',
+    name: 'Portrait Large Left',
+    icon: '◣',
+    slots: [
+      // Left: 1 large slot
+      { x: 1, y: 1, width: 60, height: 98 },
+      // Right: 2 stacked slots on top
+      { x: 63, y: 1, width: 36, height: 48 },
+      { x: 63, y: 51, width: 36, height: 48 },
+    ],
+  },
+  {
+    type: 'landscape-large-top',
+    name: 'Landscape Large Top',
+    icon: '▄',
+    slots: [
+      // Top: 1 large slot
+      { x: 1, y: 1, width: 98, height: 60 },
+      // Bottom: 2 stacked slots
+      { x: 1, y: 63, width: 48, height: 36 },
+      { x: 51, y: 63, width: 48, height: 36 },
+    ],
+  },
+  {
+    type: 'portrait-large-right',
+    name: 'Portrait Large Right',
+    icon: '◢',
+    slots: [
+      // Left: 2 stacked slots
+      { x: 1, y: 1, width: 36, height: 48 },
+      { x: 1, y: 51, width: 36, height: 48 },
+      // Right: 1 large slot
+      { x: 39, y: 1, width: 60, height: 98 },
+    ],
+  },
+  {
+    type: 'landscape-large-bottom',
+    name: 'Landscape Large Bottom',
+    icon: '▀',
+    slots: [
+      // Top: 2 stacked slots
+      { x: 1, y: 1, width: 48, height: 36 },
+      { x: 51, y: 1, width: 48, height: 36 },
+      // Bottom: 1 large slot
+      { x: 1, y: 39, width: 98, height: 60 },
+    ],
+  },
 ];
 
 export function getLayoutTemplate(type: LayoutType): LayoutTemplate {

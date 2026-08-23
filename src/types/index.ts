@@ -65,7 +65,11 @@ export type LayoutType =
   | 'hero-wide'
   | 'featured-side'
   | 'double-stack'
-  | 'split-duo';
+  | 'split-duo'
+  | 'portrait-large-left'
+  | 'landscape-large-top'
+  | 'portrait-large-right'
+  | 'landscape-large-bottom';
 
 // Paper size types
 export type PaperSize = 'A4' | 'A5' | 'LETTER' | 'SQUARE' | 'CUSTOM';
