@@ -1,0 +1,137 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background-color: #0F0F1A;
+  color: #FFFFFF;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #1F1F35;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #2A2A45;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #3A3A55;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+.animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Drag and drop styles */
+.drop-zone {
+  border: 2px dashed #2A2A45;
+  transition: all 0.3s ease;
+}
+
+.drop-zone:hover,
+.drop-zone.active {
+  border-color: #E94560;
+  background-color: rgba(233, 69, 96, 0.1);
+}
+
+/* Photo thumbnail styles */
+.photo-thumbnail {
+  transition: all 0.2s ease;
+}
+
+.photo-thumbnail:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 20px rgba(233, 69, 96, 0.3);
+}
+
+/* Button styles */
+.btn-primary {
+  @apply bg-accent hover:bg-accent/80 text-white font-medium py-2 px-4 rounded-lg transition-all duration-200;
+}
+
+.btn-secondary {
+  @apply bg-surface hover:bg-surface/80 text-white font-medium py-2 px-4 rounded-lg border border-border transition-all duration-200;
+}
+
+/* Card styles */
+.card {
+  @apply bg-surface rounded-xl border border-border p-4;
+}
+
+/* Input styles */
+.input {
+  @apply bg-primary border border-border rounded-lg px-3 py-2 text-white focus:outline-none focus:border-accent transition-colors;
+}
+
+/* Modal overlay */
+.modal-overlay {
+  @apply fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50;
+}
+
+.modal-content {
+  @apply bg-surface rounded-2xl border border-border p-6 max-w-lg w-full mx-4 animate-fade-in;
+}
+
+/* Toast notification */
+.toast {
+  @apply fixed bottom-4 right-4 bg-surface border border-border rounded-lg p-4 shadow-lg animate-fade-in;
+}
