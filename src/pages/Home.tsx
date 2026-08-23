@@ -1,0 +1,457 @@
+import React, { useEffect, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import {
+  BookOpen,
+  Upload,
+  Palette,
+  FileDown,
+  ChevronRight,
+  Star,
+  Zap,
+  Shield,
+  Clock,
+  CheckCircle,
+} from 'lucide-react';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../lib/firebase';
+import { useAuth } from '../contexts/AuthContext';
+
+interface Feature {
+  id: string;
+  icon: string;
+  title: string;
+  description: string;
+}
+
+interface HomeContent {
+  heroImage: string;
+  heroTitle: string;
+  heroSubtitle: string;
+  ctaText: string;
+  ctaButtonText: string;
+  features: Feature[];
+}
+
+const defaultContent: HomeContent = {
+  heroImage: '',
+  heroTitle: 'Buat Photobook Profesional Tanpa Ribet',
+  heroSubtitle:
+    'Solusi mudah untuk menyusun photobook dengan template menarik. Tanpa perlu install software desain.',
+  ctaText: 'Mulai Sekarang - Gratis!',
+  ctaButtonText: 'Buat Photobook',
+  features: [
+    {
+      id: '1',
+      icon: '📸',
+      title: 'Upload Foto',
+      description: 'Upload foto dari device Anda dengan mudah dan cepat',
+    },
+    {
+      id: '2',
+      icon: '🎨',
+      title: 'Pilih Template',
+      description: 'Berbagai template profesional siap digunakan',
+    },
+    {
+      id: '3',
+      icon: '📐',
+      title: 'Susun Layout',
+      description: 'Drag & drop foto ke layout yang diinginkan',
+    },
+    {
+      id: '4',
+      icon: '📄',
+      title: 'Export PDF',
+      description: 'Download hasil dalam format PDF siap print',
+    },
+  ],
+};
+
+export const Home: React.FC = () => {
+  const [content, setContent] = useState<HomeContent>(defaultContent);
+  const [loading, setLoading] = useState(true);
+  const { user, userRole } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    fetchContent();
+
+    // Redirect admin to dashboard
+    if (user && userRole === 'admin') {
+      navigate('/admin');
+    }
+  }, [user, userRole]);
+
+  const fetchContent = async () => {
+    try {
+      const docRef = doc(db, 'homeContent', 'main');
+      const docSnap = await getDoc(docRef);
+
+      if (docSnap.exists()) {
+        setContent(docSnap.data() as HomeContent);
+      }
+    } catch (error) {
+      console.error('Error fetching content:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleStart = () => {
+    if (user) {
+      navigate('/editor');
+    } else {
+      navigate('/login');
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-background">
+      {/* Navigation */}
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-border">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            {/* Logo */}
+            <div className="flex items-center gap-2">
+              <div className="w-10 h-10 rounded-xl bg-accent flex items-center justify-center">
+                <BookOpen className="w-6 h-6 text-white" />
+              </div>
+              <span className="text-xl font-bold text-white">PhotoBook Builder</span>
+            </div>
+
+            {/* Desktop Nav */}
+            <div className="hidden md:flex items-center gap-8">
+              <a href="#features" className="text-text-secondary hover:text-white transition-colors">
+                Fitur
+              </a>
+              <a href="#how-it-works" className="text-text-secondary hover:text-white transition-colors">
+                Cara Kerja
+              </a>
+              <a href="#templates" className="text-text-secondary hover:text-white transition-colors">
+                Template
+              </a>
+            </div>
+
+            {/* CTA */}
+            <div className="flex items-center gap-3">
+              {user ? (
+                <Link
+                  to="/editor"
+                  className="px-4 py-2 bg-accent hover:bg-accent/90 text-white rounded-xl font-medium transition-colors"
+                >
+                  Buka Editor
+                </Link>
+              ) : (
+                <>
+                  <Link
+                    to="/login"
+                    className="px-4 py-2 text-white hover:text-accent transition-colors hidden sm:block"
+                  >
+                    Masuk
+                  </Link>
+                  <button
+                    onClick={handleStart}
+                    className="px-4 py-2 bg-accent hover:bg-accent/90 text-white rounded-xl font-medium transition-colors"
+                  >
+                    Mulai Gratis
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      </nav>
+
+      {/* Hero Section */}
+      <section className="pt-32 pb-20 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="grid lg:grid-cols-2 gap-12 items-center">
+            <div className="text-center lg:text-left">
+              <div className="inline-flex items-center gap-2 px-4 py-2 bg-accent/20 rounded-full mb-6">
+                <Zap size={16} className="text-accent" />
+                <span className="text-sm text-accent font-medium">
+                  {!loading && content.ctaText}
+                </span>
+              </div>
+
+              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white leading-tight mb-6">
+                {!loading ? (
+                  <>
+                    {content.heroTitle.split(' ').slice(0, 3).join(' ')}{' '}
+                    <span className="text-accent">
+                      {content.heroTitle.split(' ').slice(3).join(' ')}
+                    </span>
+                  </>
+                ) : (
+                  'Loading...'
+                )}
+              </h1>
+
+              <p className="text-lg text-text-secondary mb-8 max-w-xl mx-auto lg:mx-0">
+                {!loading ? content.heroSubtitle : 'Memuat...'}
+              </p>
+
+              <div className="flex flex-col sm:flex-row items-center gap-4 justify-center lg:justify-start">
+                <button
+                  onClick={handleStart}
+                  className="w-full sm:w-auto px-8 py-4 bg-accent hover:bg-accent/90 text-white rounded-xl font-semibold text-lg transition-all hover:scale-105 flex items-center justify-center gap-2"
+                >
+                  {!loading ? content.ctaButtonText : 'Memuat...'}
+                  <ChevronRight size={20} />
+                </button>
+                <a
+                  href="#how-it-works"
+                  className="w-full sm:w-auto px-8 py-4 bg-surface hover:bg-primary border border-border text-white rounded-xl font-medium text-lg transition-colors text-center"
+                >
+                  Pelajari Lebih
+                </a>
+              </div>
+            </div>
+
+            {/* Hero Image */}
+            <div className="relative">
+              <div className="relative rounded-2xl overflow-hidden shadow-2xl shadow-accent/20">
+                <div className="aspect-[4/3] bg-gradient-to-br from-accent/30 to-purple-500/30 flex items-center justify-center">
+                  {!loading && content.heroImage ? (
+                    <img
+                      src={content.heroImage}
+                      alt="Hero"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="text-center p-8">
+                      <BookOpen size={80} className="mx-auto text-white/50 mb-4" />
+                      <p className="text-white/70 text-lg">Preview Photobook</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Floating Elements */}
+              <div className="absolute -top-4 -right-4 p-4 bg-surface rounded-xl shadow-lg border border-border animate-bounce">
+                <div className="flex items-center gap-2">
+                  <CheckCircle size={20} className="text-green-400" />
+                  <span className="text-sm text-white">Easy to Use</span>
+                </div>
+              </div>
+
+              <div className="absolute -bottom-4 -left-4 p-4 bg-surface rounded-xl shadow-lg border border-border">
+                <div className="flex items-center gap-3">
+                  <div className="flex -space-x-2">
+                    {[1, 2, 3, 4].map((i) => (
+                      <div
+                        key={i}
+                        className="w-8 h-8 rounded-full bg-accent/50 border-2 border-surface"
+                      />
+                    ))}
+                  </div>
+                  <div>
+                    <p className="text-sm text-white font-medium">100+ Users</p>
+                    <p className="text-xs text-text-secondary">Trust us</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Features Section */}
+      <section id="features" className="py-20 px-4 sm:px-6 lg:px-8 bg-surface/50">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
+              Fitur Unggulan
+            </h2>
+            <p className="text-text-secondary text-lg max-w-2xl mx-auto">
+              Semua yang Anda butuhkan untuk membuat photobook profesional dalam satu platform
+            </p>
+          </div>
+
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {!loading &&
+              content.features.map((feature) => (
+                <div
+                  key={feature.id}
+                  className="group p-6 bg-surface rounded-2xl border border-border hover:border-accent/50 transition-all hover:scale-105"
+                >
+                  <div className="text-5xl mb-4">{feature.icon}</div>
+                  <h3 className="text-xl font-semibold text-white mb-2">{feature.title}</h3>
+                  <p className="text-text-secondary">{feature.description}</p>
+                </div>
+              ))}
+          </div>
+        </div>
+      </section>
+
+      {/* How It Works */}
+      <section id="how-it-works" className="py-20 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
+              Cara Kerja
+            </h2>
+            <p className="text-text-secondary text-lg">
+              Hanya 3 langkah mudah untuk membuat photobook impian Anda
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-8">
+            {/* Step 1 */}
+            <div className="relative text-center">
+              <div className="w-16 h-16 mx-auto mb-6 rounded-2xl bg-accent/20 flex items-center justify-center">
+                <Upload size={32} className="text-accent" />
+              </div>
+              <div className="absolute top-8 left-1/2 w-full h-0.5 bg-border hidden md:block -z-10" />
+              <span className="text-accent text-sm font-semibold mb-2 block">Langkah 1</span>
+              <h3 className="text-xl font-semibold text-white mb-2">Upload Foto</h3>
+              <p className="text-text-secondary">
+                Pilih foto-foto terbaik dari device Anda dan upload ke platform
+              </p>
+            </div>
+
+            {/* Step 2 */}
+            <div className="relative text-center">
+              <div className="w-16 h-16 mx-auto mb-6 rounded-2xl bg-accent/20 flex items-center justify-center">
+                <Palette size={32} className="text-accent" />
+              </div>
+              <div className="absolute top-8 left-1/2 w-full h-0.5 bg-border hidden md:block -z-10" />
+              <span className="text-accent text-sm font-semibold mb-2 block">Langkah 2</span>
+              <h3 className="text-xl font-semibold text-white mb-2">Pilih Template</h3>
+              <p className="text-text-secondary">
+                Pilih dari berbagai template profesional yang telah kami sediakan
+              </p>
+            </div>
+
+            {/* Step 3 */}
+            <div className="text-center">
+              <div className="w-16 h-16 mx-auto mb-6 rounded-2xl bg-accent/20 flex items-center justify-center">
+                <FileDown size={32} className="text-accent" />
+              </div>
+              <span className="text-accent text-sm font-semibold mb-2 block">Langkah 3</span>
+              <h3 className="text-xl font-semibold text-white mb-2">Export & Download</h3>
+              <p className="text-text-secondary">
+                Susun layout sesuai keinginan, lalu export dalam format PDF siap print
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Templates Preview */}
+      <section id="templates" className="py-20 px-4 sm:px-6 lg:px-8 bg-surface/50">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
+              Template Menarik
+            </h2>
+            <p className="text-text-secondary text-lg">
+              Pilihan template layout untuk berbagai kebutuhan photobook Anda
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {[
+              { name: 'Grid 3x3', icon: '▦' },
+              { name: 'Grid 2x2', icon: '▣' },
+              { name: 'Portfolio', icon: '▤' },
+              { name: 'Mosaic', icon: '◆' },
+              { name: '2 Photos', icon: '▭▭' },
+              { name: 'Panorama', icon: '▬' },
+              { name: 'Scrapbook', icon: '◇' },
+              { name: 'Hero Wide', icon: '▭' },
+            ].map((template) => (
+              <div
+                key={template.name}
+                className="group p-6 bg-surface rounded-xl border border-border hover:border-accent/50 transition-all cursor-pointer"
+              >
+                <div className="text-5xl text-accent mb-3 text-center">{template.icon}</div>
+                <p className="text-white text-center font-medium">{template.name}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="text-center mt-12">
+            <button
+              onClick={handleStart}
+              className="px-8 py-4 bg-accent hover:bg-accent/90 text-white rounded-xl font-semibold text-lg transition-all hover:scale-105"
+            >
+              Coba Sekarang
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {/* Testimonials / Trust */}
+      <section className="py-20 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="grid md:grid-cols-3 gap-6">
+            <div className="p-6 bg-surface rounded-2xl border border-border text-center">
+              <div className="flex items-center justify-center gap-1 mb-4">
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <Star key={i} size={20} className="text-yellow-400 fill-yellow-400" />
+                ))}
+              </div>
+              <p className="text-text-secondary mb-4">
+                "Sangat mudah digunakan! Tidak perlu install CorelDraw lagi."
+              </p>
+              <p className="text-white font-medium">- Studio Foto XYZ</p>
+            </div>
+
+            <div className="p-6 bg-surface rounded-2xl border border-border text-center">
+              <Clock size={40} className="mx-auto text-accent mb-4" />
+              <p className="text-3xl font-bold text-white mb-2">5 Menit</p>
+              <p className="text-text-secondary">
+                Waktu rata-rata untuk membuat 1 halaman photobook
+              </p>
+            </div>
+
+            <div className="p-6 bg-surface rounded-2xl border border-border text-center">
+              <Shield size={40} className="mx-auto text-accent mb-4" />
+              <p className="text-3xl font-bold text-white mb-2">100%</p>
+              <p className="text-text-secondary">
+                Secure dan data Anda tersimpan dengan aman
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* CTA Section */}
+      <section className="py-20 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-4xl mx-auto text-center">
+          <h2 className="text-3xl sm:text-4xl font-bold text-white mb-6">
+            Siap Membuat Photobook Pertamamu?
+          </h2>
+          <p className="text-text-secondary text-lg mb-8">
+            Bergabung dengan ratusan pengguna yang sudah membuat photobook profesional dengan mudah
+          </p>
+          <button
+            onClick={handleStart}
+            className="px-12 py-4 bg-accent hover:bg-accent/90 text-white rounded-xl font-semibold text-xl transition-all hover:scale-105"
+          >
+            {!loading ? content.ctaButtonText : 'Memuat...'}
+          </button>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="py-12 px-4 sm:px-6 lg:px-8 border-t border-border">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+            <div className="flex items-center gap-2">
+              <div className="w-10 h-10 rounded-xl bg-accent flex items-center justify-center">
+                <BookOpen className="w-6 h-6 text-white" />
+              </div>
+              <span className="text-xl font-bold text-white">PhotoBook Builder</span>
+            </div>
+
+            <p className="text-text-secondary text-sm">
+              © {new Date().getFullYear()} PhotoBook Builder. All rights reserved.
+            </p>
+          </div>
+        </div>
+      </footer>
+    </div>
+  );
+};

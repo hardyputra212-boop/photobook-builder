@@ -1,121 +1,125 @@
-import { useRef, useCallback } from 'react';
-import { Header, Sidebar, Toolbar, Footer } from './components/layout';
-import { Canvas } from './components/editor';
-import { Toast } from './components/common';
-import { useProjectStore } from './stores/projectStore';
-import { exportToPDF, downloadPDF } from './utils/pdfGenerator';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { ProtectedRoute } from './components/common/ProtectedRoute';
+import { AdminLayout } from './components/layout/AdminLayout';
+
+// Pages
+import { Home } from './pages/Home';
+import { Login } from './pages/Login';
+import { Dashboard } from './pages/admin/Dashboard';
+import { Users } from './pages/admin/Users';
+import { HomeEditor } from './pages/admin/HomeEditor';
+import { Projects } from './pages/admin/Projects';
+
+// Editor (existing code moved to separate component)
+import { EditorPage } from './pages/EditorPage';
+
+// Toast component
+import { Toast } from './components/common/Toast';
+
+// Redirect logic based on auth
+const AuthRedirect: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user, userRole, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-accent"></div>
+      </div>
+    );
+  }
+
+  if (user) {
+    if (userRole === 'admin') {
+      return <Navigate to="/admin" replace />;
+    }
+    return <Navigate to="/editor" replace />;
+  }
+
+  return <>{children}</>;
+};
 
 function App() {
-  const {
-    project,
-    photos,
-    setExporting,
-    addToast,
-    exportProjectJSON,
-    importProjectJSON,
-  } = useProjectStore();
-
-  const pagesContainerRef = useRef<HTMLDivElement | null>(null);
-
-  // Export to PDF
-  const handleExportPDF = useCallback(async () => {
-    if (photos.length === 0) {
-      addToast('error', 'No photos to export');
-      return;
-    }
-
-    if (!pagesContainerRef.current) {
-      addToast('error', 'Export failed - please try again');
-      return;
-    }
-
-    setExporting(true, 0);
-
-    try {
-      const blob = await exportToPDF(
-        project,
-        photos,
-        pagesContainerRef.current,
-        {
-          dpi: 150,
-          quality: 0.95,
-          onProgress: (progress) => setExporting(true, progress),
-        }
-      );
-
-      const filename = `${project.name.replace(/[^a-z0-9]/gi, '_')}_${Date.now()}.pdf`;
-      downloadPDF(blob, filename);
-      addToast('success', 'PDF exported successfully!');
-    } catch (error) {
-      console.error('Export failed:', error);
-      addToast('error', 'Failed to export PDF');
-    } finally {
-      setExporting(false, 0);
-    }
-  }, [project, photos, setExporting, addToast]);
-
-  // Save project
-  const handleSaveProject = useCallback(() => {
-    try {
-      const json = exportProjectJSON();
-      const blob = new Blob([json], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `${project.name.replace(/[^a-z0-9]/gi, '_')}.json`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-      addToast('success', 'Project saved!');
-    } catch (error) {
-      addToast('error', 'Failed to save project');
-    }
-  }, [project, exportProjectJSON, addToast]);
-
-  // Load project
-  const handleLoadProject = useCallback(() => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = '.json';
-
-    input.onchange = (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0];
-      if (file) {
-        const reader = new FileReader();
-        reader.onload = (event) => {
-          const content = event.target?.result as string;
-          try {
-            importProjectJSON(content);
-            addToast('success', 'Project loaded!');
-          } catch {
-            addToast('error', 'Invalid project file');
-          }
-        };
-        reader.readAsText(file);
-      }
-    };
-
-    input.click();
-  }, [importProjectJSON, addToast]);
-
   return (
-    <div className="h-screen flex flex-col bg-background">
-      <Header
-        onExportPDF={handleExportPDF}
-        onSaveProject={handleSaveProject}
-        onLoadProject={handleLoadProject}
-      />
+    <AuthProvider>
+      <BrowserRouter>
+        <Routes>
+          {/* Public Routes */}
+          <Route
+            path="/"
+            element={
+              <AuthRedirect>
+                <Home />
+              </AuthRedirect>
+            }
+          />
+          <Route
+            path="/login"
+            element={
+              <AuthRedirect>
+                <Login />
+              </AuthRedirect>
+            }
+          />
 
-      <div className="flex-1 flex overflow-hidden">
-        <Sidebar />
-        <Canvas pagesContainerRef={pagesContainerRef} />
-        <Toolbar />
-      </div>
+          {/* Admin Routes */}
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <AdminLayout>
+                  <Dashboard />
+                </AdminLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/users"
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <AdminLayout>
+                  <Users />
+                </AdminLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/home-editor"
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <AdminLayout>
+                  <HomeEditor />
+                </AdminLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/projects"
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <AdminLayout>
+                  <Projects />
+                </AdminLayout>
+              </ProtectedRoute>
+            }
+          />
 
-      <Footer />
-      <Toast />
-    </div>
+          {/* Editor Route */}
+          <Route
+            path="/editor"
+            element={
+              <ProtectedRoute allowedRoles={['admin', 'customer']}>
+                <EditorPage />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Fallback */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+        <Toast />
+      </BrowserRouter>
+    </AuthProvider>
   );
 }
 
