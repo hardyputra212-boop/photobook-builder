@@ -1,68 +1,26 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { AuthProvider } from './contexts/AuthContext';
 import { ProtectedRoute } from './components/common/ProtectedRoute';
 import { AdminLayout } from './components/layout/AdminLayout';
-
-// Pages
 import { Home } from './pages/Home';
 import { Login } from './pages/Login';
 import { Dashboard } from './pages/admin/Dashboard';
 import { Users } from './pages/admin/Users';
 import { HomeEditor } from './pages/admin/HomeEditor';
 import { Projects } from './pages/admin/Projects';
-
-// Editor (existing code moved to separate component)
 import { EditorPage } from './pages/EditorPage';
-
-// Toast component
 import { Toast } from './components/common/Toast';
-
-// Redirect logic based on auth
-const AuthRedirect: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user, userRole, loading } = useAuth();
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-accent"></div>
-      </div>
-    );
-  }
-
-  if (user) {
-    if (userRole === 'admin') {
-      return <Navigate to="/admin" replace />;
-    }
-    return <Navigate to="/editor" replace />;
-  }
-
-  return <>{children}</>;
-};
 
 function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
         <Routes>
-          {/* Public Routes */}
-          <Route
-            path="/"
-            element={
-              <AuthRedirect>
-                <Home />
-              </AuthRedirect>
-            }
-          />
-          <Route
-            path="/login"
-            element={
-              <AuthRedirect>
-                <Login />
-              </AuthRedirect>
-            }
-          />
+          {/* Public Routes - semua bisa akses tanpa login */}
+          <Route path="/" element={<Home />} />
+          <Route path="/login" element={<Login />} />
 
-          {/* Admin Routes */}
+          {/* Admin Routes - perlu login sebagai admin */}
           <Route
             path="/admin"
             element={
@@ -104,7 +62,7 @@ function App() {
             }
           />
 
-          {/* Editor Route */}
+          {/* Editor Route - perlu login sebagai admin atau customer */}
           <Route
             path="/editor"
             element={

@@ -12,8 +12,7 @@ import {
   Clock,
   CheckCircle,
 } from 'lucide-react';
-import { doc, getDoc } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { homeApi } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 
 interface Feature {
@@ -24,21 +23,21 @@ interface Feature {
 }
 
 interface HomeContent {
-  heroImage: string;
-  heroTitle: string;
-  heroSubtitle: string;
-  ctaText: string;
-  ctaButtonText: string;
+  hero_image?: string;
+  hero_title: string;
+  hero_subtitle: string;
+  cta_text: string;
+  cta_button_text: string;
   features: Feature[];
 }
 
 const defaultContent: HomeContent = {
-  heroImage: '',
-  heroTitle: 'Buat Photobook Profesional Tanpa Ribet',
-  heroSubtitle:
+  hero_image: '',
+  hero_title: 'Buat Photobook Profesional Tanpa Ribet',
+  hero_subtitle:
     'Solusi mudah untuk menyusun photobook dengan template menarik. Tanpa perlu install software desain.',
-  ctaText: 'Mulai Sekarang - Gratis!',
-  ctaButtonText: 'Buat Photobook',
+  cta_text: 'Mulai Sekarang - Gratis!',
+  cta_button_text: 'Buat Photobook',
   features: [
     {
       id: '1',
@@ -70,26 +69,20 @@ const defaultContent: HomeContent = {
 export const Home: React.FC = () => {
   const [content, setContent] = useState<HomeContent>(defaultContent);
   const [loading, setLoading] = useState(true);
-  const { user, userRole } = useAuth();
+  const { userRole, isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
     fetchContent();
-
-    // Redirect admin to dashboard
-    if (user && userRole === 'admin') {
-      navigate('/admin');
-    }
-  }, [user, userRole]);
+  }, []);
 
   const fetchContent = async () => {
     try {
-      const docRef = doc(db, 'homeContent', 'main');
-      const docSnap = await getDoc(docRef);
-
-      if (docSnap.exists()) {
-        setContent(docSnap.data() as HomeContent);
-      }
+      const data = await homeApi.get();
+      setContent({
+        ...data,
+        features: data.features || defaultContent.features,
+      });
     } catch (error) {
       console.error('Error fetching content:', error);
     } finally {
@@ -98,10 +91,16 @@ export const Home: React.FC = () => {
   };
 
   const handleStart = () => {
-    if (user) {
+    if (isAuthenticated) {
       navigate('/editor');
     } else {
       navigate('/login');
+    }
+  };
+
+  const handleGoToAdmin = () => {
+    if (userRole === 'admin') {
+      navigate('/admin');
     }
   };
 
@@ -134,13 +133,23 @@ export const Home: React.FC = () => {
 
             {/* CTA */}
             <div className="flex items-center gap-3">
-              {user ? (
-                <Link
-                  to="/editor"
-                  className="px-4 py-2 bg-accent hover:bg-accent/90 text-white rounded-xl font-medium transition-colors"
-                >
-                  Buka Editor
-                </Link>
+              {isAuthenticated ? (
+                <>
+                  {userRole === 'admin' && (
+                    <button
+                      onClick={handleGoToAdmin}
+                      className="px-4 py-2 bg-surface hover:bg-primary border border-border text-white rounded-xl font-medium transition-colors"
+                    >
+                      Dashboard
+                    </button>
+                  )}
+                  <Link
+                    to="/editor"
+                    className="px-4 py-2 bg-accent hover:bg-accent/90 text-white rounded-xl font-medium transition-colors"
+                  >
+                    Buka Editor
+                  </Link>
+                </>
               ) : (
                 <>
                   <Link
@@ -170,16 +179,16 @@ export const Home: React.FC = () => {
               <div className="inline-flex items-center gap-2 px-4 py-2 bg-accent/20 rounded-full mb-6">
                 <Zap size={16} className="text-accent" />
                 <span className="text-sm text-accent font-medium">
-                  {!loading && content.ctaText}
+                  {!loading && content.cta_text}
                 </span>
               </div>
 
               <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white leading-tight mb-6">
                 {!loading ? (
                   <>
-                    {content.heroTitle.split(' ').slice(0, 3).join(' ')}{' '}
+                    {content.hero_title.split(' ').slice(0, 3).join(' ')}{' '}
                     <span className="text-accent">
-                      {content.heroTitle.split(' ').slice(3).join(' ')}
+                      {content.hero_title.split(' ').slice(3).join(' ')}
                     </span>
                   </>
                 ) : (
@@ -188,7 +197,7 @@ export const Home: React.FC = () => {
               </h1>
 
               <p className="text-lg text-text-secondary mb-8 max-w-xl mx-auto lg:mx-0">
-                {!loading ? content.heroSubtitle : 'Memuat...'}
+                {!loading ? content.hero_subtitle : 'Memuat...'}
               </p>
 
               <div className="flex flex-col sm:flex-row items-center gap-4 justify-center lg:justify-start">
@@ -196,7 +205,7 @@ export const Home: React.FC = () => {
                   onClick={handleStart}
                   className="w-full sm:w-auto px-8 py-4 bg-accent hover:bg-accent/90 text-white rounded-xl font-semibold text-lg transition-all hover:scale-105 flex items-center justify-center gap-2"
                 >
-                  {!loading ? content.ctaButtonText : 'Memuat...'}
+                  {!loading ? content.cta_button_text : 'Memuat...'}
                   <ChevronRight size={20} />
                 </button>
                 <a
@@ -212,9 +221,9 @@ export const Home: React.FC = () => {
             <div className="relative">
               <div className="relative rounded-2xl overflow-hidden shadow-2xl shadow-accent/20">
                 <div className="aspect-[4/3] bg-gradient-to-br from-accent/30 to-purple-500/30 flex items-center justify-center">
-                  {!loading && content.heroImage ? (
+                  {!loading && content.hero_image ? (
                     <img
-                      src={content.heroImage}
+                      src={content.hero_image}
                       alt="Hero"
                       className="w-full h-full object-cover"
                     />
@@ -430,7 +439,7 @@ export const Home: React.FC = () => {
             onClick={handleStart}
             className="px-12 py-4 bg-accent hover:bg-accent/90 text-white rounded-xl font-semibold text-xl transition-all hover:scale-105"
           >
-            {!loading ? content.ctaButtonText : 'Memuat...'}
+            {!loading ? content.cta_button_text : 'Memuat...'}
           </button>
         </div>
       </section>
