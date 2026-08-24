@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import {
   BookOpen,
   Upload,
-  Palette,
+  Move,
   FileDown,
   ChevronRight,
   Star,
@@ -16,6 +16,7 @@ import {
   Image,
   Maximize,
   SquareStack,
+  Palette,
 } from 'lucide-react';
 import { homeApi } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
@@ -283,17 +284,26 @@ export const Home: React.FC = () => {
           </div>
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {!loading &&
-              content.features.map((feature) => (
+            {[
+              { id: '1', icon: Upload, title: 'Upload Foto', description: 'Upload foto dari device Anda dengan mudah dan cepat' },
+              { id: '2', icon: Palette, title: 'Pilih Template', description: 'Berbagai template profesional siap digunakan' },
+              { id: '3', icon: Move, title: 'Susun Layout', description: 'Drag & drop foto ke layout yang diinginkan' },
+              { id: '4', icon: FileDown, title: 'Export PDF', description: 'Download hasil dalam format PDF siap print' },
+            ].map((feature) => {
+              const Icon = feature.icon;
+              return (
                 <div
                   key={feature.id}
-                  className="group p-6 bg-surface rounded-2xl border border-border hover:border-accent/50 transition-all hover:scale-105"
+                  className="p-6 bg-surface rounded-2xl border border-border hover:border-accent/50 transition-all hover:scale-105"
                 >
-                  <div className="text-5xl mb-4">{feature.icon}</div>
+                  <div className="w-14 h-14 rounded-2xl bg-accent/20 flex items-center justify-center mb-4">
+                    <Icon size={28} className="text-accent" />
+                  </div>
                   <h3 className="text-xl font-semibold text-white mb-2">{feature.title}</h3>
                   <p className="text-text-secondary">{feature.description}</p>
                 </div>
-              ))}
+              );
+            })}
           </div>
         </div>
       </section>
