@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   BookOpen,
@@ -6,6 +6,7 @@ import {
   Move,
   FileDown,
   ChevronRight,
+  ChevronLeft,
   Star,
   Zap,
   Shield,
@@ -21,6 +22,11 @@ import {
 import { homeApi } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 
+interface SliderImage {
+  url: string;
+  title: string;
+}
+
 interface Feature {
   id: string;
   icon: string;
@@ -35,6 +41,7 @@ interface HomeContent {
   cta_text: string;
   cta_button_text: string;
   features: Feature[];
+  slider_images: SliderImage[];
 }
 
 const defaultContent: HomeContent = {
@@ -70,11 +77,13 @@ const defaultContent: HomeContent = {
       description: 'Download hasil dalam format PDF siap print',
     },
   ],
+  slider_images: [],
 };
 
 export const Home: React.FC = () => {
   const [content, setContent] = useState<HomeContent>(defaultContent);
   const [loading, setLoading] = useState(true);
+  const [currentSlide, setCurrentSlide] = useState(0);
   const { userRole, isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
@@ -88,6 +97,7 @@ export const Home: React.FC = () => {
       setContent({
         ...data,
         features: data.features || defaultContent.features,
+        slider_images: data.slider_images || [],
       });
     } catch (error) {
       console.error('Error fetching content:', error);
@@ -109,6 +119,36 @@ export const Home: React.FC = () => {
       navigate('/admin');
     }
   };
+
+  // Auto-rotate slider
+  useEffect(() => {
+    if (content.slider_images && content.slider_images.length > 1) {
+      const interval = setInterval(() => {
+        setCurrentSlide((prev) => (prev + 1) % content.slider_images.length);
+      }, 5000);
+      return () => clearInterval(interval);
+    }
+  }, [content.slider_images]);
+
+  const nextSlide = useCallback(() => {
+    if (content.slider_images && content.slider_images.length > 0) {
+      setCurrentSlide((prev) => (prev + 1) % content.slider_images.length);
+    }
+  }, [content.slider_images]);
+
+  const prevSlide = useCallback(() => {
+    if (content.slider_images && content.slider_images.length > 0) {
+      setCurrentSlide(
+        (prev) => (prev - 1 + content.slider_images.length) % content.slider_images.length
+      );
+    }
+  }, [content.slider_images]);
+
+  const goToSlide = useCallback((index: number) => {
+    setCurrentSlide(index);
+  }, []);
+
+  const hasSlides = content.slider_images && content.slider_images.length > 0;
 
   return (
     <div className="min-h-screen bg-background">
@@ -177,7 +217,7 @@ export const Home: React.FC = () => {
         </div>
       </nav>
 
-      {/* Hero Section */}
+      {/* Hero Section with Slider */}
       <section className="pt-32 pb-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
@@ -223,49 +263,136 @@ export const Home: React.FC = () => {
               </div>
             </div>
 
-            {/* Hero Image */}
+            {/* Hero Slider/Carousel */}
             <div className="relative">
               <div className="relative rounded-2xl overflow-hidden shadow-2xl shadow-accent/20">
-                <div className="aspect-[4/3] bg-gradient-to-br from-accent/30 to-purple-500/30 flex items-center justify-center">
-                  {!loading && content.hero_image ? (
-                    <img
-                      src={content.hero_image}
-                      alt="Hero"
-                      className="w-full h-full object-cover"
-                    />
+                <div className="aspect-[4/3] bg-gradient-to-br from-accent/30 to-purple-500/30">
+                  {hasSlides ? (
+                    <>
+                      <img
+                        src={content.slider_images[currentSlide].url}
+                        alt={content.slider_images[currentSlide].title || `Slide ${currentSlide + 1}`}
+                        className="w-full h-full object-cover transition-opacity duration-500"
+                      />
+                      {/* Gradient overlay for text readability */}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                      {/* Slide title overlay */}
+                      <div className="absolute bottom-0 left-0 right-0 p-6">
+                        <h3 className="text-white text-xl font-semibold">
+                          {content.slider_images[currentSlide].title}
+                        </h3>
+                      </div>
+                    </>
                   ) : (
-                    <div className="text-center p-8">
-                      <BookOpen size={80} className="mx-auto text-white/50 mb-4" />
-                      <p className="text-white/70 text-lg">Preview Photobook</p>
+                    <div className="w-full h-full flex items-center justify-center">
+                      <div className="text-center p-8">
+                        <Image size={80} className="mx-auto text-white/50 mb-4" />
+                        <p className="text-white/70 text-lg">Preview Photobook</p>
+                        <p className="text-white/50 text-sm mt-2">
+                          Tambahkan gambar slider dari Admin Home Editor
+                        </p>
+                      </div>
                     </div>
                   )}
                 </div>
+
+                {/* Navigation Arrows */}
+                {hasSlides && content.slider_images.length > 1 && (
+                  <>
+                    <button
+                      onClick={prevSlide}
+                      className="absolute left-4 top-1/2 -translate-y-1/2 p-3 bg-black/50 hover:bg-black/70 rounded-full text-white transition-all hover:scale-110"
+                      aria-label="Previous slide"
+                    >
+                      <ChevronLeft size={24} />
+                    </button>
+                    <button
+                      onClick={nextSlide}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 p-3 bg-black/50 hover:bg-black/70 rounded-full text-white transition-all hover:scale-110"
+                      aria-label="Next slide"
+                    >
+                      <ChevronRight size={24} />
+                    </button>
+                  </>
+                )}
               </div>
+
+              {/* Dots Indicator */}
+              {hasSlides && content.slider_images.length > 1 && (
+                <div className="flex justify-center gap-2 mt-4">
+                  {content.slider_images.map((_, index) => (
+                    <button
+                      key={index}
+                      onClick={() => goToSlide(index)}
+                      className={`w-3 h-3 rounded-full transition-all ${
+                        index === currentSlide
+                          ? 'bg-accent scale-110'
+                          : 'bg-white/30 hover:bg-white/50'
+                      }`}
+                      aria-label={`Go to slide ${index + 1}`}
+                    />
+                  ))}
+                </div>
+              )}
 
               {/* Floating Elements */}
-              <div className="absolute -top-4 -right-4 p-4 bg-surface rounded-xl shadow-lg border border-border animate-bounce">
-                <div className="flex items-center gap-2">
-                  <CheckCircle size={20} className="text-green-400" />
-                  <span className="text-sm text-white">Easy to Use</span>
-                </div>
-              </div>
+              {hasSlides && (
+                <>
+                  <div className="absolute -top-4 -right-4 p-4 bg-surface rounded-xl shadow-lg border border-border animate-bounce">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle size={20} className="text-green-400" />
+                      <span className="text-sm text-white">Easy to Use</span>
+                    </div>
+                  </div>
 
-              <div className="absolute -bottom-4 -left-4 p-4 bg-surface rounded-xl shadow-lg border border-border">
-                <div className="flex items-center gap-3">
-                  <div className="flex -space-x-2">
-                    {[1, 2, 3, 4].map((i) => (
-                      <div
-                        key={i}
-                        className="w-8 h-8 rounded-full bg-accent/50 border-2 border-surface"
-                      />
-                    ))}
+                  <div className="absolute -bottom-4 -left-4 p-4 bg-surface rounded-xl shadow-lg border border-border">
+                    <div className="flex items-center gap-3">
+                      <div className="flex -space-x-2">
+                        {[1, 2, 3, 4].map((i) => (
+                          <div
+                            key={i}
+                            className="w-8 h-8 rounded-full bg-accent/50 border-2 border-surface"
+                          />
+                        ))}
+                      </div>
+                      <div>
+                        <p className="text-sm text-white font-medium">
+                          {content.slider_images.length} Slides
+                        </p>
+                        <p className="text-xs text-text-secondary">Photobook Gallery</p>
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-sm text-white font-medium">100+ Users</p>
-                    <p className="text-xs text-text-secondary">Trust us</p>
+                </>
+              )}
+
+              {!hasSlides && (
+                <>
+                  <div className="absolute -top-4 -right-4 p-4 bg-surface rounded-xl shadow-lg border border-border">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle size={20} className="text-green-400" />
+                      <span className="text-sm text-white">Easy to Use</span>
+                    </div>
                   </div>
-                </div>
-              </div>
+
+                  <div className="absolute -bottom-4 -left-4 p-4 bg-surface rounded-xl shadow-lg border border-border">
+                    <div className="flex items-center gap-3">
+                      <div className="flex -space-x-2">
+                        {[1, 2, 3, 4].map((i) => (
+                          <div
+                            key={i}
+                            className="w-8 h-8 rounded-full bg-accent/50 border-2 border-surface"
+                          />
+                        ))}
+                      </div>
+                      <div>
+                        <p className="text-sm text-white font-medium">100+ Users</p>
+                        <p className="text-xs text-text-secondary">Trust us</p>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>

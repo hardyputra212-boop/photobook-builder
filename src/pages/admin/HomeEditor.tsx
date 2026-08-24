@@ -6,19 +6,19 @@ import {
   FileText,
   CheckCircle,
   Upload,
-  X,
   Plus,
   Trash2,
   Eye,
+  ChevronLeft,
+  ChevronRight,
+  GripVertical,
 } from 'lucide-react';
-import {
-  doc,
-  getDoc,
-  updateDoc,
-  serverTimestamp,
-} from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { db, storage } from '../../lib/firebase';
+import { homeApi } from '../../services/api';
+
+interface SliderImage {
+  url: string;
+  title: string;
+}
 
 interface Feature {
   id: string;
@@ -28,56 +28,29 @@ interface Feature {
 }
 
 interface HomeContent {
-  heroImage: string;
   heroTitle: string;
   heroSubtitle: string;
   ctaText: string;
   ctaButtonText: string;
   features: Feature[];
+  slider_images: SliderImage[];
 }
-
-const defaultFeatures: Feature[] = [
-  {
-    id: '1',
-    icon: '📸',
-    title: 'Upload Foto',
-    description: 'Upload foto dari device Anda dengan mudah dan cepat',
-  },
-  {
-    id: '2',
-    icon: '🎨',
-    title: 'Pilih Template',
-    description: 'Berbagai template profesional siap digunakan',
-  },
-  {
-    id: '3',
-    icon: '📐',
-    title: 'Susun Layout',
-    description: 'Drag & drop foto ke layout yang diinginkan',
-  },
-  {
-    id: '4',
-    icon: '📄',
-    title: 'Export PDF',
-    description: 'Download hasil dalam format PDF siap print',
-  },
-];
 
 export const HomeEditor: React.FC = () => {
   const [content, setContent] = useState<HomeContent>({
-    heroImage: '',
     heroTitle: 'Buat Photobook Profesional Tanpa Ribet',
-    heroSubtitle:
-      'Solusi mudah untuk menyusun photobook dengan template menarik. Tanpa perlu install software desain.',
+    heroSubtitle: 'Solusi mudah untuk menyusun photobook dengan template menarik. Tanpa perlu install software desain.',
     ctaText: 'Mulai Sekarang - Gratis!',
     ctaButtonText: 'Buat Photobook',
-    features: defaultFeatures,
+    features: [],
+    slider_images: [],
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [saved, setSaved] = useState(false);
   const [previewMode, setPreviewMode] = useState(false);
+  const [currentSliderIndex, setCurrentSliderIndex] = useState(0);
 
   useEffect(() => {
     fetchContent();
@@ -85,12 +58,8 @@ export const HomeEditor: React.FC = () => {
 
   const fetchContent = async () => {
     try {
-      const docRef = doc(db, 'homeContent', 'main');
-      const docSnap = await getDoc(docRef);
-
-      if (docSnap.exists()) {
-        setContent(docSnap.data() as HomeContent);
-      }
+      const data = await homeApi.get();
+      setContent(data);
     } catch (error) {
       console.error('Error fetching content:', error);
     } finally {
@@ -103,10 +72,7 @@ export const HomeEditor: React.FC = () => {
     setSaved(false);
 
     try {
-      await updateDoc(doc(db, 'homeContent', 'main'), {
-        ...content,
-        updatedAt: serverTimestamp(),
-      });
+      await homeApi.update(content);
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
     } catch (error) {
@@ -117,23 +83,70 @@ export const HomeEditor: React.FC = () => {
     }
   };
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, field: string) => {
+  const handleSliderImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     setUploadingImage(true);
 
     try {
-      const storageRef = ref(storage, `home/${field}_${Date.now()}`);
-      const snapshot = await uploadBytes(storageRef, file);
-      const downloadURL = await getDownloadURL(snapshot.ref);
+      const result = await homeApi.uploadImage(file);
+      const imageUrl = result.url || result.imageUrl;
 
-      setContent({ ...content, [field]: downloadURL });
+      const newSliderImage: SliderImage = {
+        url: imageUrl,
+        title: `Slider ${content.slider_images.length + 1}`,
+      };
+
+      setContent({
+        ...content,
+        slider_images: [...content.slider_images, newSliderImage],
+      });
     } catch (error) {
-      console.error('Error uploading image:', error);
-      alert('Gagal upload gambar');
+      console.error('Error uploading slider image:', error);
+      alert('Gagal upload gambar slider');
     } finally {
       setUploadingImage(false);
+    }
+  };
+
+  const removeSliderImage = (index: number) => {
+    const newImages = content.slider_images.filter((_, i) => i !== index);
+    setContent({ ...content, slider_images: newImages });
+    if (currentSliderIndex >= newImages.length && currentSliderIndex > 0) {
+      setCurrentSliderIndex(newImages.length - 1);
+    }
+  };
+
+  const updateSliderImage = (index: number, field: 'url' | 'title', value: string) => {
+    const newImages = [...content.slider_images];
+    newImages[index] = { ...newImages[index], [field]: value };
+    setContent({ ...content, slider_images: newImages });
+  };
+
+  const moveSliderImage = (index: number, direction: 'left' | 'right') => {
+    if (
+      (direction === 'left' && index === 0) ||
+      (direction === 'right' && index === content.slider_images.length - 1)
+    ) {
+      return;
+    }
+
+    const newImages = [...content.slider_images];
+    const newIndex = direction === 'left' ? index - 1 : index + 1;
+    [newImages[index], newImages[newIndex]] = [newImages[newIndex], newImages[index]];
+    setContent({ ...content, slider_images: newImages });
+
+    if (currentSliderIndex === index) {
+      setCurrentSliderIndex(newIndex);
+    } else if (
+      direction === 'left' && currentSliderIndex === index - 1
+    ) {
+      setCurrentSliderIndex(currentSliderIndex + 1);
+    } else if (
+      direction === 'right' && currentSliderIndex === index + 1
+    ) {
+      setCurrentSliderIndex(currentSliderIndex - 1);
     }
   };
 
@@ -216,14 +229,32 @@ export const HomeEditor: React.FC = () => {
         <div className="bg-surface border border-border rounded-2xl p-8">
           <h2 className="text-xl font-bold text-white mb-6">Preview Halaman Utama</h2>
           <div className="bg-white rounded-xl overflow-hidden">
-            {/* Hero */}
+            {/* Hero Slider Preview */}
             <div className="relative h-64 bg-gradient-to-r from-purple-600 to-pink-600 flex items-center justify-center">
-              {content.heroImage && (
-                <img
-                  src={content.heroImage}
-                  alt="Hero"
-                  className="absolute inset-0 w-full h-full object-cover opacity-50"
-                />
+              {content.slider_images && content.slider_images.length > 0 ? (
+                <>
+                  <img
+                    src={content.slider_images[currentSliderIndex]?.url}
+                    alt={content.slider_images[currentSliderIndex]?.title}
+                    className="absolute inset-0 w-full h-full object-cover opacity-50"
+                  />
+                  <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-2">
+                    {content.slider_images.map((_, i) => (
+                      <button
+                        key={i}
+                        onClick={() => setCurrentSliderIndex(i)}
+                        className={`w-2 h-2 rounded-full transition-colors ${
+                          i === currentSliderIndex ? 'bg-white' : 'bg-white/50'
+                        }`}
+                      />
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <div className="text-white/70 text-center">
+                  <Image size={48} className="mx-auto mb-2 opacity-50" />
+                  <p>Tidak ada gambar slider</p>
+                </div>
               )}
               <div className="relative text-center px-4">
                 <h1 className="text-2xl md:text-3xl font-bold text-white mb-2">
@@ -242,13 +273,17 @@ export const HomeEditor: React.FC = () => {
             <div className="p-8 bg-gray-50">
               <h2 className="text-xl font-bold text-gray-800 mb-6 text-center">Fitur Kami</h2>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {content.features.map((feature) => (
-                  <div key={feature.id} className="text-center p-4">
-                    <div className="text-4xl mb-2">{feature.icon}</div>
-                    <h3 className="font-semibold text-gray-800">{feature.title}</h3>
-                    <p className="text-sm text-gray-600">{feature.description}</p>
-                  </div>
-                ))}
+                {content.features && content.features.length > 0 ? (
+                  content.features.map((feature) => (
+                    <div key={feature.id} className="text-center p-4">
+                      <div className="text-4xl mb-2">{feature.icon}</div>
+                      <h3 className="font-semibold text-gray-800">{feature.title}</h3>
+                      <p className="text-sm text-gray-600">{feature.description}</p>
+                    </div>
+                  ))
+                ) : (
+                  <p className="col-span-4 text-center text-gray-500">Tidak ada fitur</p>
+                )}
               </div>
             </div>
           </div>
@@ -256,46 +291,134 @@ export const HomeEditor: React.FC = () => {
       ) : (
         // Edit Mode
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Slider Images Section */}
+          <div className="bg-surface border border-border rounded-2xl p-6 lg:col-span-2">
+            <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+              <Image size={20} />
+              Slider Images
+            </h2>
+
+            {/* Current Slider Preview */}
+            {content.slider_images && content.slider_images.length > 0 && (
+              <div className="mb-4">
+                <label className="block text-sm text-text-secondary mb-2">Preview</label>
+                <div className="relative rounded-xl overflow-hidden h-48 bg-primary">
+                  <img
+                    src={content.slider_images[currentSliderIndex]?.url}
+                    alt={content.slider_images[currentSliderIndex]?.title}
+                    className="w-full h-full object-cover"
+                  />
+                  <div className="absolute inset-0 flex items-center justify-between px-2">
+                    <button
+                      onClick={() => setCurrentSliderIndex(Math.max(0, currentSliderIndex - 1))}
+                      disabled={currentSliderIndex === 0}
+                      className="p-2 bg-black/50 rounded-full text-white disabled:opacity-30 hover:bg-black/70 transition-colors"
+                    >
+                      <ChevronLeft size={20} />
+                    </button>
+                    <button
+                      onClick={() =>
+                        setCurrentSliderIndex(
+                          Math.min(content.slider_images.length - 1, currentSliderIndex + 1)
+                        )
+                      }
+                      disabled={currentSliderIndex === content.slider_images.length - 1}
+                      className="p-2 bg-black/50 rounded-full text-white disabled:opacity-30 hover:bg-black/70 transition-colors"
+                    >
+                      <ChevronRight size={20} />
+                    </button>
+                  </div>
+                  <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-2">
+                    {content.slider_images.map((_, i) => (
+                      <button
+                        key={i}
+                        onClick={() => setCurrentSliderIndex(i)}
+                        className={`w-2 h-2 rounded-full transition-colors ${
+                          i === currentSliderIndex ? 'bg-white' : 'bg-white/50'
+                        }`}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Slider Image List */}
+            <div className="space-y-3 mb-4">
+              {content.slider_images && content.slider_images.length > 0 ? (
+                content.slider_images.map((image, index) => (
+                  <div
+                    key={index}
+                    className="flex items-center gap-3 bg-primary border border-border rounded-xl p-3"
+                  >
+                    <GripVertical size={16} className="text-text-secondary cursor-grab" />
+                    <img
+                      src={image.url}
+                      alt={image.title}
+                      className="w-16 h-12 object-cover rounded-lg"
+                    />
+                    <input
+                      type="text"
+                      value={image.title}
+                      onChange={(e) => updateSliderImage(index, 'title', e.target.value)}
+                      className="flex-1 px-3 py-2 bg-surface border border-border rounded-lg text-white text-sm focus:outline-none focus:border-accent transition-colors"
+                      placeholder="Slider title"
+                    />
+                    <button
+                      onClick={() => moveSliderImage(index, 'left')}
+                      disabled={index === 0}
+                      className="p-2 text-text-secondary hover:text-white disabled:opacity-30 transition-colors"
+                    >
+                      <ChevronLeft size={18} />
+                    </button>
+                    <button
+                      onClick={() => moveSliderImage(index, 'right')}
+                      disabled={index === content.slider_images.length - 1}
+                      className="p-2 text-text-secondary hover:text-white disabled:opacity-30 transition-colors"
+                    >
+                      <ChevronRight size={18} />
+                    </button>
+                    <button
+                      onClick={() => removeSliderImage(index)}
+                      className="p-2 text-text-secondary hover:text-red-400 transition-colors"
+                    >
+                      <Trash2 size={18} />
+                    </button>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center py-8 text-text-secondary">
+                  <Image size={32} className="mx-auto mb-2 opacity-50" />
+                  <p>Belum ada gambar slider</p>
+                </div>
+              )}
+            </div>
+
+            {/* Add Slider Image */}
+            <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-border rounded-xl cursor-pointer hover:border-accent/50 transition-colors">
+              <Upload size={24} className="text-text-secondary mb-2" />
+              <span className="text-sm text-text-secondary">Tambah gambar slider</span>
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleSliderImageUpload}
+                disabled={uploadingImage}
+              />
+              {uploadingImage && (
+                <div className="mt-2">
+                  <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-accent"></div>
+                </div>
+              )}
+            </label>
+          </div>
+
           {/* Hero Section */}
           <div className="bg-surface border border-border rounded-2xl p-6">
             <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
               <Image size={20} />
               Hero Section
             </h2>
-
-            {/* Hero Image */}
-            <div className="mb-4">
-              <label className="block text-sm text-text-secondary mb-2">Hero Image</label>
-              <div className="relative">
-                {content.heroImage ? (
-                  <div className="relative">
-                    <img
-                      src={content.heroImage}
-                      alt="Hero"
-                      className="w-full h-40 object-cover rounded-xl"
-                    />
-                    <button
-                      onClick={() => setContent({ ...content, heroImage: '' })}
-                      className="absolute top-2 right-2 p-2 bg-black/50 rounded-lg hover:bg-black/70 transition-colors"
-                    >
-                      <X size={16} className="text-white" />
-                    </button>
-                  </div>
-                ) : (
-                  <label className="flex flex-col items-center justify-center w-full h-40 border-2 border-dashed border-border rounded-xl cursor-pointer hover:border-accent/50 transition-colors">
-                    <Upload size={24} className="text-text-secondary mb-2" />
-                    <span className="text-sm text-text-secondary">Click to upload</span>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={(e) => handleImageUpload(e, 'heroImage')}
-                      disabled={uploadingImage}
-                    />
-                  </label>
-                )}
-              </div>
-            </div>
 
             {/* Hero Title */}
             <div className="mb-4">
@@ -367,49 +490,56 @@ export const HomeEditor: React.FC = () => {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              {content.features.map((feature) => (
-                <div
-                  key={feature.id}
-                  className="bg-primary border border-border rounded-xl p-4"
-                >
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-3xl">{feature.icon}</span>
-                    <button
-                      onClick={() => deleteFeature(feature.id)}
-                      className="p-1 rounded hover:bg-red-500/20 text-text-secondary hover:text-red-400 transition-colors"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
+              {content.features && content.features.length > 0 ? (
+                content.features.map((feature) => (
+                  <div
+                    key={feature.id}
+                    className="bg-primary border border-border rounded-xl p-4"
+                  >
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-3xl">{feature.icon}</span>
+                      <button
+                        onClick={() => deleteFeature(feature.id)}
+                        className="p-1 rounded hover:bg-red-500/20 text-text-secondary hover:text-red-400 transition-colors"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
 
-                  <input
-                    type="text"
-                    value={feature.title}
-                    onChange={(e) => updateFeature(feature.id, 'title', e.target.value)}
-                    className="w-full px-3 py-2 mb-2 bg-surface border border-border rounded-lg text-white text-sm focus:outline-none focus:border-accent transition-colors"
-                    placeholder="Title"
-                  />
-
-                  <textarea
-                    value={feature.description}
-                    onChange={(e) => updateFeature(feature.id, 'description', e.target.value)}
-                    rows={2}
-                    className="w-full px-3 py-2 bg-surface border border-border rounded-lg text-white text-sm focus:outline-none focus:border-accent transition-colors resize-none"
-                    placeholder="Description"
-                  />
-
-                  <div className="mt-2">
-                    <label className="block text-xs text-text-secondary mb-1">Icon (emoji)</label>
                     <input
                       type="text"
-                      value={feature.icon}
-                      onChange={(e) => updateFeature(feature.id, 'icon', e.target.value)}
-                      className="w-full px-3 py-1.5 bg-surface border border-border rounded-lg text-white text-sm focus:outline-none focus:border-accent transition-colors text-center"
-                      placeholder="📸"
+                      value={feature.title}
+                      onChange={(e) => updateFeature(feature.id, 'title', e.target.value)}
+                      className="w-full px-3 py-2 mb-2 bg-surface border border-border rounded-lg text-white text-sm focus:outline-none focus:border-accent transition-colors"
+                      placeholder="Title"
                     />
+
+                    <textarea
+                      value={feature.description}
+                      onChange={(e) => updateFeature(feature.id, 'description', e.target.value)}
+                      rows={2}
+                      className="w-full px-3 py-2 mb-2 bg-surface border border-border rounded-lg text-white text-sm focus:outline-none focus:border-accent transition-colors resize-none"
+                      placeholder="Description"
+                    />
+
+                    <div className="mt-2">
+                      <label className="block text-xs text-text-secondary mb-1">Icon (emoji)</label>
+                      <input
+                        type="text"
+                        value={feature.icon}
+                        onChange={(e) => updateFeature(feature.id, 'icon', e.target.value)}
+                        className="w-full px-3 py-1.5 bg-surface border border-border rounded-lg text-white text-sm focus:outline-none focus:border-accent transition-colors text-center"
+                        placeholder="📸"
+                      />
+                    </div>
                   </div>
+                ))
+              ) : (
+                <div className="col-span-4 text-center py-8 text-text-secondary">
+                  <FileText size={32} className="mx-auto mb-2 opacity-50" />
+                  <p>Belum ada fitur</p>
                 </div>
-              ))}
+              )}
             </div>
           </div>
         </div>
