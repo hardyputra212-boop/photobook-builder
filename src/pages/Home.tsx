@@ -11,6 +11,11 @@ import {
   Shield,
   Clock,
   CheckCircle,
+  Grid2x2,
+  LayoutDashboard,
+  Image,
+  Maximize,
+  SquareStack,
 } from 'lucide-react';
 import { homeApi } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
@@ -361,23 +366,28 @@ export const Home: React.FC = () => {
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {[
-              { name: 'Grid 3x3', icon: '▦' },
-              { name: 'Grid 2x2', icon: '▣' },
-              { name: 'Portfolio', icon: '▤' },
-              { name: 'Mosaic', icon: '◆' },
-              { name: '2 Photos', icon: '▭▭' },
-              { name: 'Panorama', icon: '▬' },
-              { name: 'Scrapbook', icon: '◇' },
-              { name: 'Hero Wide', icon: '▭' },
-            ].map((template) => (
+              { name: 'Grid 3x3', icon: Grid2x2 },
+              { name: 'Grid 2x2', icon: SquareStack },
+              { name: 'Portfolio', icon: LayoutDashboard },
+              { name: 'Mosaic', icon: Image },
+              { name: '2 Photos', icon: Image },
+              { name: 'Panorama', icon: Maximize },
+              { name: 'Scrapbook', icon: BookOpen },
+              { name: 'Hero Wide', icon: Maximize },
+            ].map((template) => {
+              const Icon = template.icon;
+              return (
               <div
                 key={template.name}
-                className="group p-6 bg-surface rounded-xl border border-border hover:border-accent/50 transition-all cursor-pointer"
+                className="p-6 bg-surface rounded-xl border border-border hover:border-accent/50 transition-all"
               >
-                <div className="text-5xl text-accent mb-3 text-center">{template.icon}</div>
+                <div className="w-full h-20 flex items-center justify-center mb-3">
+                  <Icon size={48} className="text-accent" />
+                </div>
                 <p className="text-white text-center font-medium">{template.name}</p>
               </div>
-            ))}
+              );
+            })}
           </div>
 
           <div className="text-center mt-12">
