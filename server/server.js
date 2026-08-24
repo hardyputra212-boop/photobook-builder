@@ -167,174 +167,13 @@ app.post('/api/auth/login', async (req, res) => {
         );
 
         res.json({
-            token,
-            user: {
-                id: user.id,
-                email: user.email,
-                name: user.name,
-                role: user.role,
-                is_active: user.is_active,
-                expires_at: user.expires_at
-            }
-        });
-    } catch (error) {
-        console.error('Login error:', error);
-        res.status(500).json({ error: 'Login failed' });
-    }
-});
-
-// Register (admin only can create users)
-app.post('/api/auth/register', authenticateToken, adminOnly, async (req, res) => {
-    try {
-        const { email, password, name, role, expires_at, is_active } = req.body;
-
-        if (!email || !password) {
-            return res.status(400).json({ error: 'Email and password required' });
-        }
-
-        // Check if email already exists
-        const existing = await query('SELECT id FROM users WHERE email = ?', [email]);
-        if (existing.length > 0) {
-            return res.status(409).json({ error: 'Email already registered' });
-        }
-
-        // Hash password
-        const hashedPassword = await bcrypt.hash(password, 10);
-
-        // Insert user
-        const result = await query(
-            'INSERT INTO users (email, password, name, role, expires_at, is_active) VALUES (?, ?, ?, ?, ?, ?)',
-            [email, hashedPassword, name || '', role || 'customer', expires_at || null, is_active !== undefined ? is_active : true]
-        );
-
-        res.status(201).json({
-            message: 'User created successfully',
-            userId: result.insertId
-        });
-    } catch (error) {
-        console.error('Register error:', error);
-        res.status(500).json({ error: 'Registration failed' });
-    }
-});
-
-// Get current user
-app.get('/api/auth/me', authenticateToken, async (req, res) => {
-    try {
-        const users = await query('SELECT id, email, name, role, is_active, expires_at, last_active, created_at FROM users WHERE id = ?', [req.user.id]);
-
-        if (users.length === 0) {
-            return res.status(404).json({ error: 'User not found' });
-        }
-
-        res.json(users[0]);
-    } catch (error) {
-        console.error('Get user error:', error);
-        res.status(500).json({ error: 'Failed to get user' });
-    }
-});
-
-// =============================================
-// USER ROUTES (Admin Only)
-// =============================================
-
-// Get all users
-app.get('/api/users', authenticateToken, adminOnly, async (req, res) => {
-    try {
-        const users = await query(
-            'SELECT id, email, name, role, is_active, expires_at, last_active, created_at FROM users ORDER BY created_at DESC'
-        );
-        res.json(users);
-    } catch (error) {
-        console.error('Get users error:', error);
-        res.status(500).json({ error: 'Failed to get users' });
-    }
-});
-
-// Update user
-app.put('/api/users/:id', authenticateToken, adminOnly, async (req, res) => {
-    try {
-        const { id } = req.params;
-        const { name, role, expires_at, is_active } = req.body;
-
-        // Build update query dynamically
-        const updates = [];
-        const params = [];
-
-        if (name !== undefined) {
-            updates.push('name = ?');
-            params.push(name);
-        }
-        if (role !== undefined) {
-            updates.push('role = ?');
-            params.push(role);
-        }
-        if (expires_at !== undefined) {
-            updates.push('expires_at = ?');
-            params.push(expires_at || null);
-        }
-        if (is_active !== undefined) {
-            updates.push('is_active = ?');
-            params.push(is_active);
-        }
-
-        if (updates.length === 0) {
-            return res.status(400).json({ error: 'No fields to update' });
-        }
-
-        params.push(id);
-        await query(`UPDATE users SET ${updates.join(', ')} WHERE id = ?`, params);
-
-        res.json({ message: 'User updated successfully' });
-    } catch (error) {
-        console.error('Update user error:', error);
-        res.status(500).json({ error: 'Failed to update user' });
-    }
-});
-
-// Delete user
-app.delete('/api/users/:id', authenticateToken, adminOnly, async (req, res) => {
-    try {
-        const { id } = req.params;
-
-        // Prevent deleting self
-        if (parseInt(id) === req.user.id) {
-            return res.status(400).json({ error: 'Cannot delete your own account' });
-        }
-
-        await query('DELETE FROM users WHERE id = ?', [id]);
-        res.json({ message: 'User deleted successfully' });
-    } catch (error) {
-        console.error('Delete user error:', error);
-        res.status(500).json({ error: 'Failed to delete user' });
-    }
-});
-
-// =============================================
-// HOME CONTENT ROUTES
-// =============================================
-
-// Get home content
-app.get('/api/home-content', async (req, res) => {
-    try {
-        const content = await query('SELECT * FROM home_content WHERE id = 1');
-        if (content.length === 0) {
-            return res.json({
-                hero_title: 'Buat Photobook Profesional Tanpa Ribet',
-                hero_subtitle: 'Solusi mudah untuk menyusun photobook dengan template menarik.',
-                cta_text: 'Mulai Sekarang - Gratis!',
-                cta_button_text: 'Buat Photobook',
-                features: []
-            });
-        }
-
-        const data = content[0];
-        res.json({
             hero_title: data.hero_title,
             hero_subtitle: data.hero_subtitle,
             cta_text: data.cta_text,
             cta_button_text: data.cta_button_text,
             hero_image: data.hero_image,
-            features: typeof data.features === 'string' ? JSON.parse(data.features) : data.features
+            features: typeof data.features === 'string' ? JSON.parse(data.features) : data.features,
+            slider_images: typeof data.slider_images === 'string' ? JSON.parse(data.slider_images) : data.slider_images || []
         });
     } catch (error) {
         console.error('Get home content error:', error);
@@ -345,7 +184,7 @@ app.get('/api/home-content', async (req, res) => {
 // Update home content
 app.put('/api/home-content', authenticateToken, adminOnly, async (req, res) => {
     try {
-        const { heroImage, heroTitle, heroSubtitle, ctaText, ctaButtonText, features } = req.body;
+        const { heroImage, heroTitle, heroSubtitle, ctaText, ctaButtonText, features, slider_images } = req.body;
 
         await query(
             `UPDATE home_content SET
@@ -354,7 +193,8 @@ app.put('/api/home-content', authenticateToken, adminOnly, async (req, res) => {
                 hero_subtitle = COALESCE(?, hero_subtitle),
                 cta_text = COALESCE(?, cta_text),
                 cta_button_text = COALESCE(?, cta_button_text),
-                features = COALESCE(?, features)
+                features = COALESCE(?, features),
+                slider_images = COALESCE(?, slider_images)
             WHERE id = 1`,
             [
                 heroImage || null,
@@ -558,4 +398,32 @@ app.get('/api/health', (req, res) => {
 app.listen(PORT, () => {
     console.log(`🚀 PhotoBook API running on port ${PORT}`);
     console.log(`📁 Upload directory: ${UPLOAD_DIR}`);
+});
+app.get('/api/home-content', async (req, res) => {
+    try {
+        const content = await query('SELECT * FROM home_content WHERE id = 1');
+        if (content.length === 0) {
+            return res.json({
+                hero_title: 'Buat Photobook Profesional Tanpa Ribet',
+                hero_subtitle: 'Solusi mudah untuk menyusun photobook dengan template menarik.',
+                cta_text: 'Mulai Sekarang - Gratis!',
+                cta_button_text: 'Buat Photobook',
+                features: [],
+                slider_images: []
+            });
+        }
+        const data = content[0];
+        res.json({
+            hero_title: data.hero_title || '',
+            hero_subtitle: data.hero_subtitle || '',
+            cta_text: data.cta_text || '',
+            cta_button_text: data.cta_button_text || '',
+            hero_image: data.hero_image || null,
+            features: data.features ? (typeof data.features === 'string' ? JSON.parse(data.features) : data.features) : [],
+            slider_images: data.slider_images ? (typeof data.slider_images === 'string' ? JSON.parse(data.slider_images) : data.slider_images) : []
+        });
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).json({ error: 'Failed to load home content' });
+    }
 });
