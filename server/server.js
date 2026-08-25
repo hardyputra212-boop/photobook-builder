@@ -205,6 +205,48 @@ app.post('/api/auth/login', async (req, res) => {
     }
 });
 
+// Register
+app.post('/api/auth/register', async (req, res) => {
+    try {
+        const { email, password, name, role } = req.body;
+
+        if (!email || !password || !name) {
+            return res.status(400).json({ error: 'Email, password, and name are required' });
+        }
+
+        // Check if email already exists
+        const existingUsers = await query('SELECT id FROM users WHERE email = ?', [email]);
+        if (existingUsers.length > 0) {
+            return res.status(400).json({ error: 'Email already registered' });
+        }
+
+        // Hash password
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        // Default role to customer if not specified
+        const userRole = role === 'admin' ? 'admin' : 'customer';
+
+        // Insert user
+        const result = await query(
+            'INSERT INTO users (email, password, name, role, is_active, created_at) VALUES (?, ?, ?, ?, 1, NOW())',
+            [email, hashedPassword, name, userRole]
+        );
+
+        res.status(201).json({
+            message: 'User registered successfully',
+            user: {
+                id: result.insertId,
+                email,
+                name,
+                role: userRole
+            }
+        });
+    } catch (error) {
+        console.error('Register error:', error);
+        res.status(500).json({ error: 'Registration failed' });
+    }
+});
+
 // Update home content
 app.put('/api/home-content', authenticateToken, adminOnly, async (req, res) => {
     try {
@@ -382,6 +424,81 @@ app.delete('/api/projects/:id', authenticateToken, async (req, res) => {
     } catch (error) {
         console.error('Delete project error:', error);
         res.status(500).json({ error: 'Failed to delete project' });
+    }
+});
+
+// =============================================
+// USERS ROUTES (Admin Only)
+// =============================================
+
+// Get all users
+app.get('/api/users', authenticateToken, adminOnly, async (req, res) => {
+    try {
+        const users = await query(
+            'SELECT id, email, name, role, is_active, expires_at, created_at, last_active FROM users ORDER BY created_at DESC'
+        );
+        res.json(users);
+    } catch (error) {
+        console.error('Get users error:', error);
+        res.status(500).json({ error: 'Failed to get users' });
+    }
+});
+
+// Update user
+app.put('/api/users/:id', authenticateToken, adminOnly, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { name, role, is_active, expires_at } = req.body;
+
+        const updates = [];
+        const values = [];
+
+        if (name !== undefined) {
+            updates.push('name = ?');
+            values.push(name);
+        }
+        if (role !== undefined) {
+            updates.push('role = ?');
+            values.push(role);
+        }
+        if (is_active !== undefined) {
+            updates.push('is_active = ?');
+            values.push(is_active ? 1 : 0);
+        }
+        if (expires_at !== undefined) {
+            updates.push('expires_at = ?');
+            values.push(expires_at || null);
+        }
+
+        if (updates.length === 0) {
+            return res.status(400).json({ error: 'No fields to update' });
+        }
+
+        values.push(id);
+        await query(`UPDATE users SET ${updates.join(', ')} WHERE id = ?`, values);
+
+        res.json({ message: 'User updated successfully' });
+    } catch (error) {
+        console.error('Update user error:', error);
+        res.status(500).json({ error: 'Failed to update user' });
+    }
+});
+
+// Delete user
+app.delete('/api/users/:id', authenticateToken, adminOnly, async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        // Prevent deleting own account
+        if (parseInt(id) === req.user.id) {
+            return res.status(400).json({ error: 'Cannot delete your own account' });
+        }
+
+        await query('DELETE FROM users WHERE id = ?', [id]);
+        res.json({ message: 'User deleted successfully' });
+    } catch (error) {
+        console.error('Delete user error:', error);
+        res.status(500).json({ error: 'Failed to delete user' });
     }
 });
 
