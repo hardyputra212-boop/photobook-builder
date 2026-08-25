@@ -129,6 +129,20 @@ async function checkUserStatus(user) {
 // AUTH ROUTES
 // =============================================
 
+// Get current user
+app.get('/api/auth/me', authenticateToken, async (req, res) => {
+    try {
+        const users = await query('SELECT id, email, name, role FROM users WHERE id = ?', [req.user.id]);
+        if (users.length === 0) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        res.json(users[0]);
+    } catch (error) {
+        console.error('Get user error:', error);
+        res.status(500).json({ error: 'Failed to get user' });
+    }
+});
+
 // Login
 app.post('/api/auth/login', async (req, res) => {
     try {

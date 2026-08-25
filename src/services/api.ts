@@ -55,6 +55,8 @@ async function apiRequest(endpoint: string, options: RequestInit = {}): Promise<
         data = JSON.parse(text);
     } catch (e) {
         console.error('Invalid JSON response:', text);
+        console.error('Response status:', response.status);
+        console.error('Response headers:', Object.fromEntries(response.headers.entries()));
         throw new Error('Invalid JSON response from server');
     }
 
