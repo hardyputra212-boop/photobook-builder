@@ -2,7 +2,8 @@
 // PhotoBook Builder - API Service
 // =============================================
 
-const API_BASE_URL = 'http://localhost:3000';
+// Use relative path for proxy, or absolute URL for direct access
+const API_BASE_URL = import.meta.env.VITE_API_URL || '';
 
 // =============================================
 // Token Management
