@@ -166,18 +166,28 @@ app.post('/api/auth/login', async (req, res) => {
             { expiresIn: '7d' }
         );
 
+        // Get home content
+        const homeData = await query('SELECT * FROM home_content WHERE id = 1');
+
         res.json({
-            hero_title: data.hero_title,
-            hero_subtitle: data.hero_subtitle,
-            cta_text: data.cta_text,
-            cta_button_text: data.cta_button_text,
-            hero_image: data.hero_image,
-            features: typeof data.features === 'string' ? JSON.parse(data.features) : data.features,
-            slider_images: typeof data.slider_images === 'string' ? JSON.parse(data.slider_images) : data.slider_images || []
+            user: {
+                id: user.id,
+                email: user.email,
+                name: user.name,
+                role: user.role
+            },
+            token,
+            hero_title: homeData[0].hero_title,
+            hero_subtitle: homeData[0].hero_subtitle,
+            cta_text: homeData[0].cta_text,
+            cta_button_text: homeData[0].cta_button_text,
+            hero_image: homeData[0].hero_image,
+            features: typeof homeData[0].features === 'string' ? JSON.parse(homeData[0].features) : homeData[0].features,
+            slider_images: typeof homeData[0].slider_images === 'string' ? JSON.parse(homeData[0].slider_images) : homeData[0].slider_images || []
         });
     } catch (error) {
-        console.error('Get home content error:', error);
-        res.status(500).json({ error: 'Failed to get home content' });
+        console.error('Login error:', error);
+        res.status(500).json({ error: 'Login failed' });
     }
 });
 
@@ -202,7 +212,8 @@ app.put('/api/home-content', authenticateToken, adminOnly, async (req, res) => {
                 heroSubtitle || null,
                 ctaText || null,
                 ctaButtonText || null,
-                features ? JSON.stringify(features) : null
+                features ? JSON.stringify(features) : null,
+                slider_images ? JSON.stringify(slider_images) : null
             ]
         );
 
