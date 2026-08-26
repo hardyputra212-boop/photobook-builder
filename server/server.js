@@ -40,15 +40,22 @@ const storage = multer.diskStorage({
 
 const upload = multer({
     storage,
-    limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+    limits: { fileSize: 100 * 1024 * 1024 }, // 100MB
     fileFilter: (req, file, cb) => {
-        const allowedTypes = /jpeg|jpg|png|gif|webp/;
-        const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-        const mimetype = allowedTypes.test(file.mimetype);
-        if (extname && mimetype) {
+        const allowedImageTypes = /jpeg|jpg|png|gif|webp/;
+        const allowedVideoTypes = /mp4|webm|ogg/;
+        const extname = path.extname(file.originalname).toLowerCase();
+        const mimetype = file.mimetype.toLowerCase();
+
+        if (allowedImageTypes.test(extname) || allowedImageTypes.test(mimetype)) {
+            req.body.fileType = 'image';
             return cb(null, true);
         }
-        cb(new Error('Only image files are allowed!'));
+        if (allowedVideoTypes.test(extname) || allowedVideoTypes.test(mimetype)) {
+            req.body.fileType = 'video';
+            return cb(null, true);
+        }
+        cb(new Error('Only image or video files are allowed!'));
     }
 });
 
@@ -250,7 +257,7 @@ app.post('/api/auth/register', async (req, res) => {
 // Update home content
 app.put('/api/home-content', authenticateToken, adminOnly, async (req, res) => {
     try {
-        const { heroImage, heroTitle, heroSubtitle, ctaText, ctaButtonText, features, slider_images, whatsapp_number } = req.body;
+        const { heroImage, heroTitle, heroSubtitle, ctaText, ctaButtonText, features, slider_images, whatsapp_number, price_list } = req.body;
 
         await query(
             `UPDATE home_content SET
@@ -261,7 +268,8 @@ app.put('/api/home-content', authenticateToken, adminOnly, async (req, res) => {
                 cta_button_text = COALESCE(?, cta_button_text),
                 features = COALESCE(?, features),
                 slider_images = COALESCE(?, slider_images),
-                whatsapp_number = ?
+                whatsapp_number = ?,
+                price_list = ?
             WHERE id = 1`,
             [
                 heroImage || null,
@@ -271,7 +279,8 @@ app.put('/api/home-content', authenticateToken, adminOnly, async (req, res) => {
                 ctaButtonText || null,
                 features ? JSON.stringify(features) : null,
                 slider_images ? JSON.stringify(slider_images) : null,
-                whatsapp_number || null
+                whatsapp_number || null,
+                price_list ? JSON.stringify(price_list) : null
             ]
         );
 
@@ -299,6 +308,26 @@ app.post('/api/upload', authenticateToken, adminOnly, upload.single('image'), as
     } catch (error) {
         console.error('Upload error:', error);
         res.status(500).json({ error: 'Upload failed' });
+    }
+});
+
+// Upload video
+app.post('/api/upload-video', authenticateToken, adminOnly, upload.single('video'), async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ error: 'No video uploaded' });
+        }
+
+        const url = `/uploads/${req.file.filename}`;
+
+        res.json({
+            message: 'Video uploaded successfully',
+            url,
+            filename: req.file.filename
+        });
+    } catch (error) {
+        console.error('Video upload error:', error);
+        res.status(500).json({ error: 'Video upload failed' });
     }
 });
 
@@ -554,7 +583,8 @@ app.get('/api/home-content', async (req, res) => {
                 cta_button_text: 'Buat Photobook',
                 whatsapp_number: '',
                 features: [],
-                slider_images: []
+                slider_images: [],
+                price_list: []
             });
         }
         const data = content[0];
@@ -566,7 +596,8 @@ app.get('/api/home-content', async (req, res) => {
             whatsapp_number: data.whatsapp_number || '',
             hero_image: data.hero_image || null,
             features: data.features ? (typeof data.features === 'string' ? JSON.parse(data.features) : data.features) : [],
-            slider_images: data.slider_images ? (typeof data.slider_images === 'string' ? JSON.parse(data.slider_images) : data.slider_images) : []
+            slider_images: data.slider_images ? (typeof data.slider_images === 'string' ? JSON.parse(data.slider_images) : data.slider_images) : [],
+            price_list: data.price_list ? (typeof data.price_list === 'string' ? JSON.parse(data.price_list) : data.price_list) : []
         });
     } catch (error) {
         console.error('Error:', error);

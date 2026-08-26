@@ -22,9 +22,11 @@ import {
 import { homeApi } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 
-interface SliderImage {
+interface SliderItem {
+  type?: 'image' | 'video';
   url: string;
   title: string;
+  youtube_id?: string;
 }
 
 interface Feature {
@@ -32,6 +34,15 @@ interface Feature {
   icon: string;
   title: string;
   description: string;
+}
+
+interface PriceItem {
+  id: string;
+  name: string;
+  price: string;
+  period: string;
+  features: string[];
+  popular?: boolean;
 }
 
 interface HomeContent {
@@ -42,7 +53,8 @@ interface HomeContent {
   cta_button_text: string;
   whatsapp_number: string;
   features: Feature[];
-  slider_images: SliderImage[];
+  slider_images: SliderItem[];
+  price_list: PriceItem[];
 }
 
 const defaultContent: HomeContent = {
@@ -80,6 +92,7 @@ const defaultContent: HomeContent = {
     },
   ],
   slider_images: [],
+  price_list: [],
 };
 
 export const Home: React.FC = () => {
@@ -284,19 +297,44 @@ export const Home: React.FC = () => {
                 <div className="aspect-[4/3] bg-gradient-to-br from-accent/30 to-purple-500/30">
                   {hasSlides ? (
                     <>
-                      <img
-                        src={content.slider_images[currentSlide].url}
-                        alt={content.slider_images[currentSlide].title || `Slide ${currentSlide + 1}`}
-                        className="w-full h-full object-cover transition-opacity duration-500"
-                      />
-                      {/* Gradient overlay for text readability */}
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-                      {/* Slide title overlay */}
-                      <div className="absolute bottom-0 left-0 right-0 p-6">
-                        <h3 className="text-white text-xl font-semibold">
-                          {content.slider_images[currentSlide].title}
-                        </h3>
-                      </div>
+                      {/* Check if current slide is video */}
+                      {content.slider_images[currentSlide].type === 'video' || content.slider_images[currentSlide].url?.includes('youtube') || content.slider_images[currentSlide].url?.includes('.mp4') ? (
+                        <>
+                          {/* YouTube Video */}
+                          {content.slider_images[currentSlide].youtube_id ? (
+                            <iframe
+                              src={`https://www.youtube.com/embed/${content.slider_images[currentSlide].youtube_id}?autoplay=0&rel=0`}
+                              title={content.slider_images[currentSlide].title}
+                              className="w-full h-full"
+                              frameBorder="0"
+                              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                              allowFullScreen
+                            />
+                          ) : (
+                            /* Uploaded Video */
+                            <video
+                              src={content.slider_images[currentSlide].url}
+                              controls
+                              className="w-full h-full object-cover"
+                            />
+                          )}
+                        </>
+                      ) : (
+                        /* Image Slide */
+                        <>
+                          <img
+                            src={content.slider_images[currentSlide].url}
+                            alt={content.slider_images[currentSlide].title || `Slide ${currentSlide + 1}`}
+                            className="w-full h-full object-cover transition-opacity duration-500"
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                          <div className="absolute bottom-0 left-0 right-0 p-6">
+                            <h3 className="text-white text-xl font-semibold">
+                              {content.slider_images[currentSlide].title}
+                            </h3>
+                          </div>
+                        </>
+                      )}
                     </>
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
@@ -304,7 +342,7 @@ export const Home: React.FC = () => {
                         <Image size={80} className="mx-auto text-white/50 mb-4" />
                         <p className="text-white/70 text-lg">Preview Photobook</p>
                         <p className="text-white/50 text-sm mt-2">
-                          Tambahkan gambar slider dari Admin Home Editor
+                          Tambahkan gambar/video slider dari Admin Home Editor
                         </p>
                       </div>
                     </div>
@@ -587,6 +625,64 @@ export const Home: React.FC = () => {
           </div>
         </div>
       </section>
+
+      {/* Price List Section */}
+      {content.price_list && content.price_list.length > 0 && (
+        <section id="pricing" className="py-20 px-4 sm:px-6 lg:px-8">
+          <div className="max-w-7xl mx-auto">
+            <div className="text-center mb-16">
+              <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
+                Paket Harga
+              </h2>
+              <p className="text-text-secondary text-lg">
+                Pilih paket yang sesuai dengan kebutuhan Anda
+              </p>
+            </div>
+
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {content.price_list.map((pkg) => (
+                <div
+                  key={pkg.id}
+                  className={`relative rounded-2xl p-6 border transition-all hover:scale-105 ${
+                    pkg.popular
+                      ? 'bg-gradient-to-b from-accent/20 to-surface border-accent'
+                      : 'bg-surface border-border hover:border-accent/50'
+                  }`}
+                >
+                  {pkg.popular && (
+                    <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1 bg-accent rounded-full text-white text-sm font-medium">
+                      Populer
+                    </div>
+                  )}
+                  <h3 className="text-xl font-bold text-white mb-2">{pkg.name}</h3>
+                  <div className="mb-6">
+                    <span className="text-4xl font-bold text-accent">{pkg.price}</span>
+                    <span className="text-text-secondary">/{pkg.period}</span>
+                  </div>
+                  <ul className="space-y-3 mb-6">
+                    {pkg.features.map((feature, idx) => (
+                      <li key={idx} className="flex items-center gap-2 text-text-secondary">
+                        <CheckCircle size={18} className="text-green-400 flex-shrink-0" />
+                        {feature}
+                      </li>
+                    ))}
+                  </ul>
+                  <button
+                    onClick={handleStart}
+                    className={`w-full py-3 rounded-xl font-medium transition-colors ${
+                      pkg.popular
+                        ? 'bg-accent hover:bg-accent/90 text-white'
+                        : 'bg-surface border border-border hover:border-accent text-white'
+                    }`}
+                  >
+                    Pilih Paket
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* CTA Section */}
       <section className="py-20 px-4 sm:px-6 lg:px-8">
