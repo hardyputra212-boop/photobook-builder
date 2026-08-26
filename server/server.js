@@ -250,7 +250,7 @@ app.post('/api/auth/register', async (req, res) => {
 // Update home content
 app.put('/api/home-content', authenticateToken, adminOnly, async (req, res) => {
     try {
-        const { heroImage, heroTitle, heroSubtitle, ctaText, ctaButtonText, features, slider_images } = req.body;
+        const { heroImage, heroTitle, heroSubtitle, ctaText, ctaButtonText, features, slider_images, whatsapp_number } = req.body;
 
         await query(
             `UPDATE home_content SET
@@ -260,7 +260,8 @@ app.put('/api/home-content', authenticateToken, adminOnly, async (req, res) => {
                 cta_text = COALESCE(?, cta_text),
                 cta_button_text = COALESCE(?, cta_button_text),
                 features = COALESCE(?, features),
-                slider_images = COALESCE(?, slider_images)
+                slider_images = COALESCE(?, slider_images),
+                whatsapp_number = ?
             WHERE id = 1`,
             [
                 heroImage || null,
@@ -269,7 +270,8 @@ app.put('/api/home-content', authenticateToken, adminOnly, async (req, res) => {
                 ctaText || null,
                 ctaButtonText || null,
                 features ? JSON.stringify(features) : null,
-                slider_images ? JSON.stringify(slider_images) : null
+                slider_images ? JSON.stringify(slider_images) : null,
+                whatsapp_number || null
             ]
         );
 
@@ -550,6 +552,7 @@ app.get('/api/home-content', async (req, res) => {
                 hero_subtitle: 'Solusi mudah untuk menyusun photobook dengan template menarik.',
                 cta_text: 'Mulai Sekarang - Gratis!',
                 cta_button_text: 'Buat Photobook',
+                whatsapp_number: '',
                 features: [],
                 slider_images: []
             });
@@ -560,6 +563,7 @@ app.get('/api/home-content', async (req, res) => {
             hero_subtitle: data.hero_subtitle || '',
             cta_text: data.cta_text || '',
             cta_button_text: data.cta_button_text || '',
+            whatsapp_number: data.whatsapp_number || '',
             hero_image: data.hero_image || null,
             features: data.features ? (typeof data.features === 'string' ? JSON.parse(data.features) : data.features) : [],
             slider_images: data.slider_images ? (typeof data.slider_images === 'string' ? JSON.parse(data.slider_images) : data.slider_images) : []

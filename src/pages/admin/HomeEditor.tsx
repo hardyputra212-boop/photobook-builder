@@ -12,6 +12,7 @@ import {
   ChevronLeft,
   ChevronRight,
   GripVertical,
+  MessageCircle,
 } from 'lucide-react';
 import { homeApi } from '../../services/api';
 
@@ -32,6 +33,7 @@ interface HomeContent {
   heroSubtitle: string;
   ctaText: string;
   ctaButtonText: string;
+  whatsapp_number: string;
   features: Feature[];
   slider_images: SliderImage[];
 }
@@ -42,6 +44,7 @@ export const HomeEditor: React.FC = () => {
     heroSubtitle: 'Solusi mudah untuk menyusun photobook dengan template menarik. Tanpa perlu install software desain.',
     ctaText: 'Mulai Sekarang - Gratis!',
     ctaButtonText: 'Buat Photobook',
+    whatsapp_number: '',
     features: [],
     slider_images: [],
   });
@@ -470,6 +473,28 @@ export const HomeEditor: React.FC = () => {
                   className="w-full px-4 py-3 bg-primary border border-border rounded-xl text-white focus:outline-none focus:border-accent transition-colors"
                 />
               </div>
+            </div>
+          </div>
+
+          {/* WhatsApp Section */}
+          <div className="bg-surface border border-border rounded-2xl p-6">
+            <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+              <MessageCircle size={20} />
+              WhatsApp
+            </h2>
+
+            <div>
+              <label className="block text-sm text-text-secondary mb-2">Nomor WhatsApp</label>
+              <input
+                type="text"
+                value={content.whatsapp_number}
+                onChange={(e) => setContent({ ...content, whatsapp_number: e.target.value })}
+                placeholder="6281234567890"
+                className="w-full px-4 py-3 bg-primary border border-border rounded-xl text-white focus:outline-none focus:border-accent transition-colors"
+              />
+              <p className="text-xs text-text-secondary mt-2">
+                Format: kode negara + nomor (contoh: 6281234567890)
+              </p>
             </div>
           </div>
 
