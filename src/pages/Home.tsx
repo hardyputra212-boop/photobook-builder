@@ -18,6 +18,8 @@ import {
   Maximize,
   SquareStack,
   Palette,
+  Play,
+  Video,
 } from 'lucide-react';
 import { homeApi } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
@@ -45,6 +47,16 @@ interface PriceItem {
   popular?: boolean;
 }
 
+interface Tutorial {
+  id: string;
+  title: string;
+  description: string;
+  video_url?: string;
+  youtube_id?: string;
+  thumbnail?: string;
+  order: number;
+}
+
 interface HomeContent {
   hero_image?: string;
   hero_title: string;
@@ -55,6 +67,7 @@ interface HomeContent {
   features: Feature[];
   slider_images: SliderItem[];
   price_list: PriceItem[];
+  tutorials: Tutorial[];
 }
 
 const defaultContent: HomeContent = {
@@ -93,6 +106,7 @@ const defaultContent: HomeContent = {
   ],
   slider_images: [],
   price_list: [],
+  tutorials: [],
 };
 
 export const Home: React.FC = () => {
@@ -184,11 +198,14 @@ export const Home: React.FC = () => {
               <a href="#features" className="text-text-secondary hover:text-white transition-colors">
                 Fitur
               </a>
+              <a href="#tutorials" className="text-text-secondary hover:text-white transition-colors">
+                Tutorial
+              </a>
+              <a href="#pricing" className="text-text-secondary hover:text-white transition-colors">
+                Harga
+              </a>
               <a href="#how-it-works" className="text-text-secondary hover:text-white transition-colors">
                 Cara Kerja
-              </a>
-              <a href="#templates" className="text-text-secondary hover:text-white transition-colors">
-                Template
               </a>
             </div>
 
@@ -625,6 +642,76 @@ export const Home: React.FC = () => {
           </div>
         </div>
       </section>
+
+      {/* Tutorial Section */}
+      {content.tutorials && content.tutorials.length > 0 && (
+        <section id="tutorials" className="py-20 px-4 sm:px-6 lg:px-8 bg-surface/50">
+          <div className="max-w-7xl mx-auto">
+            <div className="text-center mb-16">
+              <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
+                Tutorial
+              </h2>
+              <p className="text-text-secondary text-lg">
+                Pelajari cara menggunakan PhotoBook Builder
+              </p>
+            </div>
+
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {content.tutorials.map((tutorial) => (
+                <div
+                  key={tutorial.id}
+                  className="bg-surface border border-border rounded-2xl overflow-hidden hover:border-accent/50 transition-all hover:scale-105 cursor-pointer group"
+                  onClick={() => {
+                    if (tutorial.youtube_id) {
+                      // Open YouTube video in modal or new tab
+                      window.open(`https://www.youtube.com/watch?v=${tutorial.youtube_id}`, '_blank');
+                    }
+                  }}
+                >
+                  {/* Thumbnail */}
+                  <div className="relative aspect-video bg-gradient-to-br from-accent/30 to-purple-500/30">
+                    {tutorial.youtube_id ? (
+                      <img
+                        src={`https://img.youtube.com/vi/${tutorial.youtube_id}/maxresdefault.jpg`}
+                        alt={tutorial.title}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = `https://img.youtube.com/vi/${tutorial.youtube_id}/hqdefault.jpg`;
+                        }}
+                      />
+                    ) : tutorial.thumbnail ? (
+                      <img
+                        src={tutorial.thumbnail}
+                        alt={tutorial.title}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <Video size={48} className="text-white/50" />
+                      </div>
+                    )}
+                    {/* Play Button Overlay */}
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/30 group-hover:bg-black/50 transition-colors">
+                      <div className="w-16 h-16 rounded-full bg-accent/90 flex items-center justify-center group-hover:scale-110 transition-transform">
+                        <Play size={28} className="text-white ml-1" />
+                      </div>
+                    </div>
+                  </div>
+                  {/* Content */}
+                  <div className="p-4">
+                    <h3 className="text-lg font-semibold text-white mb-2 group-hover:text-accent transition-colors">
+                      {tutorial.title}
+                    </h3>
+                    <p className="text-text-secondary text-sm line-clamp-2">
+                      {tutorial.description}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Price List Section */}
       {content.price_list && content.price_list.length > 0 && (

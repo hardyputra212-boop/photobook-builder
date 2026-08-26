@@ -17,6 +17,9 @@ import {
   DollarSign,
   Star,
   X,
+  BookText,
+  ArrowUp,
+  ArrowDown,
 } from 'lucide-react';
 import { homeApi } from '../../services/api';
 
@@ -43,6 +46,16 @@ interface PriceItem {
   popular?: boolean;
 }
 
+interface Tutorial {
+  id: string;
+  title: string;
+  description: string;
+  video_url?: string;
+  youtube_id?: string;
+  thumbnail?: string;
+  order: number;
+}
+
 interface HomeContent {
   heroTitle: string;
   heroSubtitle: string;
@@ -52,6 +65,7 @@ interface HomeContent {
   features: Feature[];
   slider_images: SliderItem[];
   price_list: PriceItem[];
+  tutorials: Tutorial[];
 }
 
 export const HomeEditor: React.FC = () => {
@@ -64,6 +78,7 @@ export const HomeEditor: React.FC = () => {
     features: [],
     slider_images: [],
     price_list: [],
+    tutorials: [],
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -348,6 +363,65 @@ export const HomeEditor: React.FC = () => {
         p.id === id ? { ...p, popular: !p.popular } : p
       ),
     });
+  };
+
+  // Tutorial Functions
+  const addTutorial = () => {
+    const newTutorial: Tutorial = {
+      id: Date.now().toString(),
+      title: 'Tutorial Baru',
+      description: 'Deskripsi tutorial',
+      video_url: '',
+      youtube_id: '',
+      order: content.tutorials.length,
+    };
+    setContent({
+      ...content,
+      tutorials: [...content.tutorials, newTutorial],
+    });
+  };
+
+  const updateTutorial = (id: string, field: keyof Tutorial, value: any) => {
+    setContent({
+      ...content,
+      tutorials: content.tutorials.map((t) =>
+        t.id === id ? { ...t, [field]: value } : t
+      ),
+    });
+  };
+
+  const deleteTutorial = (id: string) => {
+    setContent({
+      ...content,
+      tutorials: content.tutorials.filter((t) => t.id !== id),
+    });
+  };
+
+  const moveTutorial = (id: string, direction: 'up' | 'down') => {
+    const index = content.tutorials.findIndex((t) => t.id === id);
+    if (index === -1) return;
+    if (direction === 'up' && index === 0) return;
+    if (direction === 'down' && index === content.tutorials.length - 1) return;
+
+    const newTutorials = [...content.tutorials];
+    const swapIndex = direction === 'up' ? index - 1 : index + 1;
+    [newTutorials[index], newTutorials[swapIndex]] = [newTutorials[swapIndex], newTutorials[index]];
+
+    // Update order
+    newTutorials.forEach((t, i) => {
+      t.order = i;
+    });
+
+    setContent({
+      ...content,
+      tutorials: newTutorials,
+    });
+  };
+
+  const extractYouTubeIdFromUrl = (url: string) => {
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+    const match = url.match(regExp);
+    return (match && match[2].length === 11) ? match[2] : null;
   };
 
   if (loading) {
@@ -896,6 +970,121 @@ export const HomeEditor: React.FC = () => {
                     className="mt-3 px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent/90 transition-colors"
                   >
                     Tambah Paket Pertama
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Tutorial Section */}
+          <div className="bg-surface border border-border rounded-2xl p-6 lg:col-span-2">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+                <BookText size={20} />
+                Tutorial
+              </h2>
+              <button
+                onClick={addTutorial}
+                className="flex items-center gap-2 px-3 py-1.5 bg-accent/20 text-accent rounded-lg hover:bg-accent/30 transition-colors text-sm"
+              >
+                <Plus size={16} />
+                Add Tutorial
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {content.tutorials && content.tutorials.length > 0 ? (
+                content.tutorials.map((tutorial, index) => (
+                  <div
+                    key={tutorial.id}
+                    className="p-4 border border-border rounded-xl bg-primary"
+                  >
+                    <div className="flex items-start gap-4">
+                      {/* Thumbnail Preview */}
+                      <div className="w-32 h-20 bg-surface rounded-lg overflow-hidden flex-shrink-0 flex items-center justify-center">
+                        {tutorial.youtube_id ? (
+                          <img
+                            src={`https://img.youtube.com/vi/${tutorial.youtube_id}/default.jpg`}
+                            alt={tutorial.title}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <Video size={24} className="text-text-secondary" />
+                        )}
+                      </div>
+
+                      {/* Form */}
+                      <div className="flex-1 space-y-3">
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="text"
+                            value={tutorial.title}
+                            onChange={(e) => updateTutorial(tutorial.id, 'title', e.target.value)}
+                            className="flex-1 px-3 py-2 bg-surface border border-border rounded-lg text-white focus:outline-none focus:border-accent"
+                            placeholder="Judul Tutorial"
+                          />
+                          <button
+                            onClick={() => moveTutorial(tutorial.id, 'up')}
+                            disabled={index === 0}
+                            className="p-2 text-text-secondary hover:text-white disabled:opacity-30"
+                          >
+                            <ArrowUp size={18} />
+                          </button>
+                          <button
+                            onClick={() => moveTutorial(tutorial.id, 'down')}
+                            disabled={index === content.tutorials.length - 1}
+                            className="p-2 text-text-secondary hover:text-white disabled:opacity-30"
+                          >
+                            <ArrowDown size={18} />
+                          </button>
+                          <button
+                            onClick={() => deleteTutorial(tutorial.id)}
+                            className="p-2 text-text-secondary hover:text-red-400"
+                          >
+                            <Trash2 size={18} />
+                          </button>
+                        </div>
+
+                        <textarea
+                          value={tutorial.description}
+                          onChange={(e) => updateTutorial(tutorial.id, 'description', e.target.value)}
+                          rows={2}
+                          className="w-full px-3 py-2 bg-surface border border-border rounded-lg text-white text-sm focus:outline-none focus:border-accent resize-none"
+                          placeholder="Deskripsi tutorial"
+                        />
+
+                        <div>
+                          <label className="text-xs text-text-secondary mb-1 block">YouTube URL atau Video URL</label>
+                          <input
+                            type="text"
+                            value={tutorial.video_url || ''}
+                            onChange={(e) => {
+                              const youtubeId = extractYouTubeIdFromUrl(e.target.value);
+                              updateTutorial(tutorial.id, 'video_url', e.target.value);
+                              updateTutorial(tutorial.id, 'youtube_id', youtubeId || '');
+                            }}
+                            className="w-full px-3 py-2 bg-surface border border-border rounded-lg text-white text-sm focus:outline-none focus:border-accent"
+                            placeholder="https://www.youtube.com/watch?v=..."
+                          />
+                          {tutorial.youtube_id && (
+                            <p className="text-xs text-green-400 mt-1">
+                              ✓ YouTube ID: {tutorial.youtube_id}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center py-8 text-text-secondary">
+                  <BookText size={32} className="mx-auto mb-2 opacity-50" />
+                  <p>Belum ada tutorial</p>
+                  <button
+                    onClick={addTutorial}
+                    className="mt-3 px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent/90 transition-colors"
+                  >
+                    Tambah Tutorial Pertama
                   </button>
                 </div>
               )}

@@ -257,7 +257,7 @@ app.post('/api/auth/register', async (req, res) => {
 // Update home content
 app.put('/api/home-content', authenticateToken, adminOnly, async (req, res) => {
     try {
-        const { heroImage, heroTitle, heroSubtitle, ctaText, ctaButtonText, features, slider_images, whatsapp_number, price_list } = req.body;
+        const { heroImage, heroTitle, heroSubtitle, ctaText, ctaButtonText, features, slider_images, whatsapp_number, price_list, tutorials } = req.body;
 
         await query(
             `UPDATE home_content SET
@@ -269,7 +269,8 @@ app.put('/api/home-content', authenticateToken, adminOnly, async (req, res) => {
                 features = COALESCE(?, features),
                 slider_images = COALESCE(?, slider_images),
                 whatsapp_number = ?,
-                price_list = ?
+                price_list = ?,
+                tutorials = ?
             WHERE id = 1`,
             [
                 heroImage || null,
@@ -280,7 +281,8 @@ app.put('/api/home-content', authenticateToken, adminOnly, async (req, res) => {
                 features ? JSON.stringify(features) : null,
                 slider_images ? JSON.stringify(slider_images) : null,
                 whatsapp_number || null,
-                price_list ? JSON.stringify(price_list) : null
+                price_list ? JSON.stringify(price_list) : null,
+                tutorials ? JSON.stringify(tutorials) : null
             ]
         );
 
@@ -584,7 +586,8 @@ app.get('/api/home-content', async (req, res) => {
                 whatsapp_number: '',
                 features: [],
                 slider_images: [],
-                price_list: []
+                price_list: [],
+                tutorials: []
             });
         }
         const data = content[0];
@@ -597,7 +600,8 @@ app.get('/api/home-content', async (req, res) => {
             hero_image: data.hero_image || null,
             features: data.features ? (typeof data.features === 'string' ? JSON.parse(data.features) : data.features) : [],
             slider_images: data.slider_images ? (typeof data.slider_images === 'string' ? JSON.parse(data.slider_images) : data.slider_images) : [],
-            price_list: data.price_list ? (typeof data.price_list === 'string' ? JSON.parse(data.price_list) : data.price_list) : []
+            price_list: data.price_list ? (typeof data.price_list === 'string' ? JSON.parse(data.price_list) : data.price_list) : [],
+            tutorials: data.tutorials ? (typeof data.tutorials === 'string' ? JSON.parse(data.tutorials) : data.tutorials) : []
         });
     } catch (error) {
         console.error('Error:', error);
